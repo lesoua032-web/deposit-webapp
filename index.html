@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Deposit</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--tg-theme-bg-color, #fff);
+  color: var(--tg-theme-text-color, #000);
+  padding: 16px;
+  min-height: 100vh;
+}
+h1 {
+  font-size: 20px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  text-align: center;
+}
+.section-label {
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--tg-theme-hint-color, #999);
+  margin: 20px 0 8px;
+  padding-left: 4px;
+}
+.accounts {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.acc-card {
+  background: var(--tg-theme-secondary-bg-color, #f0f0f0);
+  border: 2px solid transparent;
+  border-radius: 12px;
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: border-color 0.15s, transform 0.1s;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.acc-card:active { transform: scale(0.98); }
+.acc-card.selected {
+  border-color: var(--tg-theme-button-color, #3390ec);
+}
+.acc-icon {
+  width: 40px; height: 40px;
+  border-radius: 10px;
+  background: var(--tg-theme-button-color, #3390ec);
+  color: var(--tg-theme-button-text-color, #fff);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+.acc-info { flex: 1; min-width: 0; }
+.acc-name {
+  font-size: 15px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.acc-limit {
+  font-size: 13px;
+  color: var(--tg-theme-hint-color, #999);
+  margin-top: 2px;
+}
+.amount-wrap {
+  position: relative;
+  margin-top: 8px;
+}
+.amount-input {
+  width: 100%;
+  padding: 14px 16px;
+  border: 2px solid var(--tg-theme-secondary-bg-color, #e0e0e0);
+  border-radius: 12px;
+  background: var(--tg-theme-secondary-bg-color, #f0f0f0);
+  color: var(--tg-theme-text-color, #000);
+  font-size: 17px;
+  font-weight: 500;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.amount-input:focus {
+  border-color: var(--tg-theme-button-color, #3390ec);
+}
+.amount-input::placeholder {
+  color: var(--tg-theme-hint-color, #aaa);
+  font-weight: 400;
+}
+.hint {
+  font-size: 12px;
+  color: var(--tg-theme-hint-color, #999);
+  margin-top: 6px;
+  padding-left: 4px;
+}
+.error-msg {
+  color: #e53935;
+  font-size: 13px;
+  margin-top: 8px;
+  padding-left: 4px;
+  display: none;
+}
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--tg-theme-hint-color, #999);
+  font-size: 15px;
+}
+</style>
+</head>
+<body>
+
+<h1>📤 Deposit</h1>
+
+<div id="content">
+  <div class="section-label">Select account</div>
+  <div class="accounts" id="accountList"></div>
+
+  <div class="section-label" style="margin-top:24px">Amount</div>
+  <div class="amount-wrap">
+    <input type="text" class="amount-input" id="amountInput"
+           placeholder="e.g. 50000 or 50k" inputmode="text" autocomplete="off">
+  </div>
+  <div class="hint">Numbers, k (thousands), m (millions)</div>
+  <div class="error-msg" id="errorMsg"></div>
+</div>
+
+<div class="empty-state" id="emptyState" style="display:none">
+  No active accounts available
+</div>
+
+<script>
+const tg = window.Telegram.WebApp;
+tg.ready();
+tg.expand();
+
+let selectedAccId = null;
+let accounts = [];
+
+try {
+  const params = new URLSearchParams(window.location.search);
+  const raw = params.get('d');
+  if (raw) {
+    accounts = JSON.parse(atob(raw));
+  }
+} catch(e) {
+  console.error('Failed to parse accounts', e);
+}
+
+const listEl = document.getElementById('accountList');
+const emptyEl = document.getElementById('emptyState');
+const contentEl = document.getElementById('content');
+const amountEl = document.getElementById('amountInput');
+const errorEl = document.getElementById('errorMsg');
+
+if (!accounts.length) {
+  contentEl.style.display = 'none';
+  emptyEl.style.display = 'block';
+} else {
+  accounts.forEach(function(acc) {
+    const card = document.createElement('div');
+    card.className = 'acc-card';
+    card.dataset.id = acc.id;
+
+    const statusIcon = acc.status === 'Active' ? '✅' : '❗';
+    const limitText = acc.limit ? (acc.limit >= 1000 ? Math.round(acc.limit/1000) + 'k' : acc.limit) : '';
+
+    card.innerHTML =
+      '<div class="acc-icon">🏦</div>' +
+      '<div class="acc-info">' +
+        '<div class="acc-name">' + escapeHtml(acc.name) + '</div>' +
+        '<div class="acc-limit">' + statusIcon + (limitText ? ' Limit: ' + limitText : '') + '</div>' +
+      '</div>';
+
+    card.addEventListener('click', function() {
+      document.querySelectorAll('.acc-card').forEach(function(c) { c.classList.remove('selected'); });
+      card.classList.add('selected');
+      selectedAccId = acc.id;
+      updateMainButton();
+    });
+
+    listEl.appendChild(card);
+  });
+}
+
+function escapeHtml(t) {
+  var d = document.createElement('div');
+  d.textContent = t;
+  return d.innerHTML;
+}
+
+function parseAmount(str) {
+  if (!str) return null;
+  str = str.trim().toLowerCase().replace(/,/g, '.');
+  var m = str.match(/^(\d+(?:\.\d+)?)\s*([kmкм]?)$/);
+  if (!m) return null;
+  var num = parseFloat(m[1]);
+  if (isNaN(num) || num <= 0) return null;
+  var suffix = m[2];
+  if (suffix === 'k' || suffix === 'к') num *= 1000;
+  if (suffix === 'm' || suffix === 'м') num *= 1000000;
+  return Math.round(num);
+}
+
+function updateMainButton() {
+  var amt = parseAmount(amountEl.value);
+  if (selectedAccId !== null && amt && amt > 0) {
+    tg.MainButton.setText('SUBMIT DEPOSIT');
+    tg.MainButton.show();
+    tg.MainButton.enable();
+  } else if (selectedAccId !== null) {
+    tg.MainButton.setText('SUBMIT DEPOSIT');
+    tg.MainButton.show();
+    tg.MainButton.enable();
+  } else {
+    tg.MainButton.hide();
+  }
+}
+
+amountEl.addEventListener('input', function() {
+  errorEl.style.display = 'none';
+  updateMainButton();
+});
+
+tg.MainButton.onClick(function() {
+  if (selectedAccId === null) {
+    errorEl.textContent = 'Please select an account';
+    errorEl.style.display = 'block';
+    return;
+  }
+
+  var amountRaw = amountEl.value.trim();
+  var amount = parseAmount(amountRaw);
+
+  var data = { account_id: selectedAccId };
+  if (amount && amount > 0) {
+    data.amount = amount;
+    data.amount_display = amountRaw;
+  }
+
+  tg.sendData(JSON.stringify(data));
+});
+</script>
+</body>
+</html>
