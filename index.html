@@ -162,7 +162,9 @@ var selectedAccId = null;
 var accounts = [];
 var botUsername = '';
 var isWebMode = false;
+var fromStartParam = false;
 
+/* --- Parse data from URL params (web mode / DM KeyboardButton) --- */
 try {
   var params = new URLSearchParams(window.location.search);
   var raw = params.get('d');
@@ -172,10 +174,39 @@ try {
   botUsername = params.get('b') || '';
   isWebMode = params.get('m') === 'web';
 } catch(e) {
-  console.error('Failed to parse params', e);
+  console.error('Failed to parse URL params', e);
 }
 
-var useSendData = !isWebMode && !!tg.initData;
+/* --- Parse data from start_param (native Mini App via Direct Link) --- */
+if (!accounts.length && tg.initDataUnsafe && tg.initDataUnsafe.start_param) {
+  try {
+    fromStartParam = true;
+    var sp = tg.initDataUnsafe.start_param;
+    while (sp.length % 4) sp += '=';
+    var decoded = atob(sp.replace(/-/g, '+').replace(/_/g, '/'));
+    var segments = decoded.split('|');
+    for (var i = 0; i < segments.length; i++) {
+      var seg = segments[i];
+      if (seg.indexOf('b:') === 0) {
+        botUsername = seg.substring(2);
+        continue;
+      }
+      var f = seg.split(',');
+      if (f.length >= 3) {
+        accounts.push({
+          id: parseInt(f[0]),
+          name: f[1],
+          status: f[2] === 'A' ? 'Active' : 'Pending',
+          limit: f[3] ? parseInt(f[3]) : 0
+        });
+      }
+    }
+  } catch(e) {
+    console.error('Failed to parse start_param', e);
+  }
+}
+
+var useSendData = !isWebMode && !fromStartParam && !!tg.initData;
 
 var listEl = document.getElementById('accountList');
 var emptyEl = document.getElementById('emptyState');
@@ -290,9 +321,8 @@ function handleSubmit() {
 
 if (useSendData) {
   tg.MainButton.onClick(handleSubmit);
-} else {
-  submitBtnEl.addEventListener('click', handleSubmit);
 }
+submitBtnEl.addEventListener('click', handleSubmit);
 </script>
 </body>
 </html>
