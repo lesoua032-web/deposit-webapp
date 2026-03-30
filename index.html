@@ -112,6 +112,22 @@ h1 {
   color: var(--tg-theme-hint-color, #999);
   font-size: 15px;
 }
+.submit-btn {
+  display: none;
+  width: 100%;
+  padding: 14px;
+  margin-top: 20px;
+  border: none;
+  border-radius: 12px;
+  background: var(--tg-theme-button-color, #3390ec);
+  color: var(--tg-theme-button-text-color, #fff);
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.submit-btn:active { opacity: 0.8; }
+.submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 </style>
 </head>
 <body>
@@ -129,6 +145,8 @@ h1 {
   </div>
   <div class="hint">Numbers, k (thousands), m (millions)</div>
   <div class="error-msg" id="errorMsg"></div>
+
+  <button class="submit-btn" id="submitBtn">📤 SUBMIT DEPOSIT</button>
 </div>
 
 <div class="empty-state" id="emptyState" style="display:none">
@@ -136,40 +154,47 @@ h1 {
 </div>
 
 <script>
-const tg = window.Telegram.WebApp;
+var tg = window.Telegram.WebApp;
 tg.ready();
 tg.expand();
 
-let selectedAccId = null;
-let accounts = [];
+var selectedAccId = null;
+var accounts = [];
+var botUsername = '';
+var isWebMode = false;
 
 try {
-  const params = new URLSearchParams(window.location.search);
-  const raw = params.get('d');
+  var params = new URLSearchParams(window.location.search);
+  var raw = params.get('d');
   if (raw) {
     accounts = JSON.parse(atob(raw));
   }
+  botUsername = params.get('b') || '';
+  isWebMode = params.get('m') === 'web';
 } catch(e) {
-  console.error('Failed to parse accounts', e);
+  console.error('Failed to parse params', e);
 }
 
-const listEl = document.getElementById('accountList');
-const emptyEl = document.getElementById('emptyState');
-const contentEl = document.getElementById('content');
-const amountEl = document.getElementById('amountInput');
-const errorEl = document.getElementById('errorMsg');
+var useSendData = !isWebMode && !!tg.initData;
+
+var listEl = document.getElementById('accountList');
+var emptyEl = document.getElementById('emptyState');
+var contentEl = document.getElementById('content');
+var amountEl = document.getElementById('amountInput');
+var errorEl = document.getElementById('errorMsg');
+var submitBtnEl = document.getElementById('submitBtn');
 
 if (!accounts.length) {
   contentEl.style.display = 'none';
   emptyEl.style.display = 'block';
 } else {
   accounts.forEach(function(acc) {
-    const card = document.createElement('div');
+    var card = document.createElement('div');
     card.className = 'acc-card';
     card.dataset.id = acc.id;
 
-    const statusIcon = acc.status === 'Active' ? '✅' : '❗';
-    const limitText = acc.limit ? (acc.limit >= 1000 ? Math.round(acc.limit/1000) + 'k' : acc.limit) : '';
+    var statusIcon = acc.status === 'Active' ? '✅' : '❗';
+    var limitText = acc.limit ? (acc.limit >= 1000 ? Math.round(acc.limit/1000) + 'k' : acc.limit) : '';
 
     card.innerHTML =
       '<div class="acc-icon">🏦</div>' +
@@ -182,7 +207,7 @@ if (!accounts.length) {
       document.querySelectorAll('.acc-card').forEach(function(c) { c.classList.remove('selected'); });
       card.classList.add('selected');
       selectedAccId = acc.id;
-      updateMainButton();
+      updateButton();
     });
 
     listEl.appendChild(card);
@@ -208,27 +233,30 @@ function parseAmount(str) {
   return Math.round(num);
 }
 
-function updateMainButton() {
-  var amt = parseAmount(amountEl.value);
-  if (selectedAccId !== null && amt && amt > 0) {
-    tg.MainButton.setText('SUBMIT DEPOSIT');
-    tg.MainButton.show();
-    tg.MainButton.enable();
-  } else if (selectedAccId !== null) {
-    tg.MainButton.setText('SUBMIT DEPOSIT');
-    tg.MainButton.show();
-    tg.MainButton.enable();
+function updateButton() {
+  if (selectedAccId !== null) {
+    if (useSendData) {
+      tg.MainButton.setText('SUBMIT DEPOSIT');
+      tg.MainButton.show();
+      tg.MainButton.enable();
+    } else {
+      submitBtnEl.style.display = 'block';
+      submitBtnEl.disabled = false;
+    }
   } else {
-    tg.MainButton.hide();
+    if (useSendData) {
+      tg.MainButton.hide();
+    }
+    submitBtnEl.style.display = 'none';
   }
 }
 
 amountEl.addEventListener('input', function() {
   errorEl.style.display = 'none';
-  updateMainButton();
+  updateButton();
 });
 
-tg.MainButton.onClick(function() {
+function handleSubmit() {
   if (selectedAccId === null) {
     errorEl.textContent = 'Please select an account';
     errorEl.style.display = 'block';
@@ -238,14 +266,33 @@ tg.MainButton.onClick(function() {
   var amountRaw = amountEl.value.trim();
   var amount = parseAmount(amountRaw);
 
-  var data = { account_id: selectedAccId };
-  if (amount && amount > 0) {
-    data.amount = amount;
-    data.amount_display = amountRaw;
+  if (useSendData) {
+    var data = { account_id: selectedAccId };
+    if (amount && amount > 0) {
+      data.amount = amount;
+      data.amount_display = amountRaw;
+    }
+    tg.sendData(JSON.stringify(data));
+    return;
   }
 
-  tg.sendData(JSON.stringify(data));
-});
+  var startParam = 'dep_' + selectedAccId;
+  if (amount && amount > 0) {
+    startParam += '_' + amount;
+  }
+  var url = 'https://t.me/' + botUsername + '?start=' + startParam;
+  try {
+    tg.openTelegramLink(url);
+  } catch(e) {
+    window.location.href = url;
+  }
+}
+
+if (useSendData) {
+  tg.MainButton.onClick(handleSubmit);
+} else {
+  submitBtnEl.addEventListener('click', handleSubmit);
+}
 </script>
 </body>
 </html>
