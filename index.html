@@ -9,125 +9,88 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: var(--tg-theme-bg-color, #fff);
-  color: var(--tg-theme-text-color, #000);
+  background: var(--tg-theme-bg-color, #1a1a2e);
+  color: var(--tg-theme-text-color, #eee);
   padding: 16px;
   min-height: 100vh;
 }
-h1 {
-  font-size: 20px;
-  font-weight: 600;
-  margin-bottom: 16px;
-  text-align: center;
-}
+h1 { font-size: 20px; font-weight: 600; margin-bottom: 16px; text-align: center; }
 .section-label {
-  font-size: 13px;
-  font-weight: 600;
-  text-transform: uppercase;
-  color: var(--tg-theme-hint-color, #999);
-  margin: 20px 0 8px;
-  padding-left: 4px;
+  font-size: 13px; font-weight: 600; text-transform: uppercase;
+  color: var(--tg-theme-hint-color, #999); margin: 20px 0 8px; padding-left: 4px;
 }
-.accounts {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
+.accounts { display: flex; flex-direction: column; gap: 8px; }
 .acc-card {
-  background: var(--tg-theme-secondary-bg-color, #f0f0f0);
-  border: 2px solid transparent;
-  border-radius: 12px;
-  padding: 14px 16px;
-  cursor: pointer;
-  transition: border-color 0.15s, transform 0.1s;
-  display: flex;
-  align-items: center;
-  gap: 12px;
+  background: var(--tg-theme-secondary-bg-color, #2a2a4a);
+  border: 2px solid transparent; border-radius: 12px; padding: 14px 16px;
+  cursor: pointer; transition: border-color 0.15s, transform 0.1s;
+  display: flex; align-items: center; gap: 12px;
 }
 .acc-card:active { transform: scale(0.98); }
-.acc-card.selected {
-  border-color: var(--tg-theme-button-color, #3390ec);
-}
+.acc-card.selected { border-color: var(--tg-theme-button-color, #3390ec); }
 .acc-icon {
-  width: 40px; height: 40px;
-  border-radius: 10px;
+  width: 40px; height: 40px; border-radius: 10px;
   background: var(--tg-theme-button-color, #3390ec);
   color: var(--tg-theme-button-text-color, #fff);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 18px;
-  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0;
 }
 .acc-info { flex: 1; min-width: 0; }
-.acc-name {
-  font-size: 15px;
-  font-weight: 500;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.acc-limit {
-  font-size: 13px;
-  color: var(--tg-theme-hint-color, #999);
-  margin-top: 2px;
-}
-.amount-wrap {
-  position: relative;
-  margin-top: 8px;
-}
+.acc-name { font-size: 15px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.acc-limit { font-size: 13px; color: var(--tg-theme-hint-color, #999); margin-top: 2px; }
+.amount-wrap { position: relative; margin-top: 8px; }
 .amount-input {
-  width: 100%;
-  padding: 14px 16px;
-  border: 2px solid var(--tg-theme-secondary-bg-color, #e0e0e0);
-  border-radius: 12px;
-  background: var(--tg-theme-secondary-bg-color, #f0f0f0);
-  color: var(--tg-theme-text-color, #000);
-  font-size: 17px;
-  font-weight: 500;
-  outline: none;
-  transition: border-color 0.15s;
+  width: 100%; padding: 14px 16px;
+  border: 2px solid var(--tg-theme-secondary-bg-color, #2a2a4a); border-radius: 12px;
+  background: var(--tg-theme-secondary-bg-color, #2a2a4a);
+  color: var(--tg-theme-text-color, #eee); font-size: 17px; font-weight: 500;
+  outline: none; transition: border-color 0.15s;
 }
-.amount-input:focus {
-  border-color: var(--tg-theme-button-color, #3390ec);
+.amount-input:focus { border-color: var(--tg-theme-button-color, #3390ec); }
+.amount-input::placeholder { color: var(--tg-theme-hint-color, #aaa); font-weight: 400; }
+.hint { font-size: 12px; color: var(--tg-theme-hint-color, #999); margin-top: 6px; padding-left: 4px; }
+.error-msg { color: #e53935; font-size: 13px; margin-top: 8px; padding-left: 4px; display: none; }
+.empty-state { text-align: center; padding: 40px 20px; color: var(--tg-theme-hint-color, #999); font-size: 15px; }
+
+.photo-area {
+  margin-top: 8px; border: 2px dashed var(--tg-theme-hint-color, #555); border-radius: 12px;
+  padding: 24px 16px; text-align: center; cursor: pointer; transition: border-color 0.15s;
+  position: relative; overflow: hidden;
 }
-.amount-input::placeholder {
-  color: var(--tg-theme-hint-color, #aaa);
-  font-weight: 400;
+.photo-area.has-photo { border-style: solid; border-color: var(--tg-theme-button-color, #3390ec); padding: 0; }
+.photo-area img {
+  width: 100%; max-height: 300px; object-fit: cover; border-radius: 10px; display: block;
 }
-.hint {
-  font-size: 12px;
-  color: var(--tg-theme-hint-color, #999);
-  margin-top: 6px;
-  padding-left: 4px;
+.photo-placeholder { color: var(--tg-theme-hint-color, #999); font-size: 14px; }
+.photo-placeholder .icon { font-size: 32px; display: block; margin-bottom: 8px; }
+.photo-remove {
+  position: absolute; top: 8px; right: 8px; width: 28px; height: 28px;
+  background: rgba(0,0,0,0.6); color: #fff; border: none; border-radius: 50%;
+  font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center;
 }
-.error-msg {
-  color: #e53935;
-  font-size: 13px;
-  margin-top: 8px;
-  padding-left: 4px;
-  display: none;
-}
-.empty-state {
-  text-align: center;
-  padding: 40px 20px;
-  color: var(--tg-theme-hint-color, #999);
-  font-size: 15px;
-}
+
 .submit-btn {
-  display: none;
-  width: 100%;
-  padding: 14px;
-  margin-top: 20px;
-  border: none;
-  border-radius: 12px;
+  display: none; width: 100%; padding: 14px; margin-top: 20px; border: none; border-radius: 12px;
   background: var(--tg-theme-button-color, #3390ec);
   color: var(--tg-theme-button-text-color, #fff);
-  font-size: 16px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: opacity 0.15s;
+  font-size: 16px; font-weight: 600; cursor: pointer; transition: opacity 0.15s;
 }
 .submit-btn:active { opacity: 0.8; }
 .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.status-overlay {
+  display: none; position: fixed; inset: 0;
+  background: var(--tg-theme-bg-color, #1a1a2e);
+  z-index: 100; justify-content: center; align-items: center; flex-direction: column; gap: 16px;
+}
+.status-overlay.visible { display: flex; }
+.spinner {
+  width: 40px; height: 40px; border: 3px solid var(--tg-theme-hint-color, #555);
+  border-top-color: var(--tg-theme-button-color, #3390ec);
+  border-radius: 50%; animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.status-text { font-size: 16px; font-weight: 500; }
+.status-icon { font-size: 48px; }
 </style>
 </head>
 <body>
@@ -144,13 +107,26 @@ h1 {
            placeholder="e.g. 50000 or 50k" inputmode="text" autocomplete="off">
   </div>
   <div class="hint">Numbers, k (thousands), m (millions)</div>
-  <div class="error-msg" id="errorMsg"></div>
 
+  <div class="section-label" style="margin-top:24px">Check photo</div>
+  <div class="photo-area" id="photoArea">
+    <div class="photo-placeholder">
+      <span class="icon">📷</span>
+      Tap to take or select photo
+    </div>
+  </div>
+  <input type="file" id="photoInput" accept="image/*" capture="environment" style="display:none">
+
+  <div class="error-msg" id="errorMsg"></div>
   <button class="submit-btn" id="submitBtn">📤 SUBMIT DEPOSIT</button>
 </div>
 
-<div class="empty-state" id="emptyState" style="display:none">
-  No active accounts available
+<div class="empty-state" id="emptyState" style="display:none">No active accounts available</div>
+
+<div class="status-overlay" id="statusOverlay">
+  <div class="spinner" id="statusSpinner"></div>
+  <div class="status-icon" id="statusIcon" style="display:none"></div>
+  <div class="status-text" id="statusText">Sending deposit...</div>
 </div>
 
 <script>
@@ -161,23 +137,20 @@ tg.expand();
 var selectedAccId = null;
 var accounts = [];
 var botUsername = '';
+var apiUrl = '';
 var isWebMode = false;
 var fromStartParam = false;
+var selectedPhoto = null;
 
-/* --- Parse data from URL params (web mode / DM KeyboardButton) --- */
 try {
   var params = new URLSearchParams(window.location.search);
   var raw = params.get('d');
-  if (raw) {
-    accounts = JSON.parse(atob(raw));
-  }
+  if (raw) accounts = JSON.parse(atob(raw));
   botUsername = params.get('b') || '';
+  apiUrl = params.get('api') || '';
   isWebMode = params.get('m') === 'web';
-} catch(e) {
-  console.error('Failed to parse URL params', e);
-}
+} catch(e) { console.error('URL params parse error', e); }
 
-/* --- Parse data from start_param (native Mini App via Direct Link) --- */
 if (!accounts.length && tg.initDataUnsafe && tg.initDataUnsafe.start_param) {
   try {
     fromStartParam = true;
@@ -187,26 +160,22 @@ if (!accounts.length && tg.initDataUnsafe && tg.initDataUnsafe.start_param) {
     var segments = decoded.split('|');
     for (var i = 0; i < segments.length; i++) {
       var seg = segments[i];
-      if (seg.indexOf('b:') === 0) {
-        botUsername = seg.substring(2);
-        continue;
-      }
+      if (seg.indexOf('b:') === 0) { botUsername = seg.substring(2); continue; }
+      if (seg.indexOf('a:') === 0) { apiUrl = seg.substring(2); continue; }
       var f = seg.split(',');
       if (f.length >= 3) {
         accounts.push({
-          id: parseInt(f[0]),
-          name: f[1],
+          id: parseInt(f[0]), name: f[1],
           status: f[2] === 'A' ? 'Active' : 'Pending',
           limit: f[3] ? parseInt(f[3]) : 0
         });
       }
     }
-  } catch(e) {
-    console.error('Failed to parse start_param', e);
-  }
+  } catch(e) { console.error('start_param parse error', e); }
 }
 
-var useSendData = !isWebMode && !fromStartParam && !!tg.initData;
+var hasApi = !!apiUrl;
+var useSendData = !isWebMode && !fromStartParam && !hasApi && !!tg.initData;
 
 var listEl = document.getElementById('accountList');
 var emptyEl = document.getElementById('emptyState');
@@ -214,6 +183,14 @@ var contentEl = document.getElementById('content');
 var amountEl = document.getElementById('amountInput');
 var errorEl = document.getElementById('errorMsg');
 var submitBtnEl = document.getElementById('submitBtn');
+var photoArea = document.getElementById('photoArea');
+var photoInput = document.getElementById('photoInput');
+var overlay = document.getElementById('statusOverlay');
+
+if (!hasApi) {
+  document.querySelector('.section-label:last-of-type').style.display = 'none';
+  photoArea.style.display = 'none';
+}
 
 if (!accounts.length) {
   contentEl.style.display = 'none';
@@ -223,33 +200,45 @@ if (!accounts.length) {
     var card = document.createElement('div');
     card.className = 'acc-card';
     card.dataset.id = acc.id;
-
     var statusIcon = acc.status === 'Active' ? '✅' : '❗';
     var limitText = acc.limit ? (acc.limit >= 1000 ? Math.round(acc.limit/1000) + 'k' : acc.limit) : '';
-
     card.innerHTML =
-      '<div class="acc-icon">🏦</div>' +
-      '<div class="acc-info">' +
-        '<div class="acc-name">' + escapeHtml(acc.name) + '</div>' +
-        '<div class="acc-limit">' + statusIcon + (limitText ? ' Limit: ' + limitText : '') + '</div>' +
-      '</div>';
-
+      '<div class="acc-icon">🏦</div><div class="acc-info">' +
+      '<div class="acc-name">' + escapeHtml(acc.name) + '</div>' +
+      '<div class="acc-limit">' + statusIcon + (limitText ? ' Limit: ' + limitText : '') + '</div></div>';
     card.addEventListener('click', function() {
       document.querySelectorAll('.acc-card').forEach(function(c) { c.classList.remove('selected'); });
       card.classList.add('selected');
       selectedAccId = acc.id;
       updateButton();
     });
-
     listEl.appendChild(card);
   });
 }
 
-function escapeHtml(t) {
-  var d = document.createElement('div');
-  d.textContent = t;
-  return d.innerHTML;
-}
+photoArea.addEventListener('click', function() { photoInput.click(); });
+photoInput.addEventListener('change', function() {
+  var file = photoInput.files[0];
+  if (!file) return;
+  selectedPhoto = file;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    photoArea.classList.add('has-photo');
+    photoArea.innerHTML = '<img src="' + e.target.result + '"><button class="photo-remove" id="photoRemoveBtn">✕</button>';
+    document.getElementById('photoRemoveBtn').addEventListener('click', function(ev) {
+      ev.stopPropagation();
+      selectedPhoto = null;
+      photoInput.value = '';
+      photoArea.classList.remove('has-photo');
+      photoArea.innerHTML = '<div class="photo-placeholder"><span class="icon">📷</span>Tap to take or select photo</div>';
+      updateButton();
+    });
+    updateButton();
+  };
+  reader.readAsDataURL(file);
+});
+
+function escapeHtml(t) { var d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
 
 function parseAmount(str) {
   if (!str) return null;
@@ -265,7 +254,9 @@ function parseAmount(str) {
 }
 
 function updateButton() {
-  if (selectedAccId !== null) {
+  var ready = selectedAccId !== null;
+  if (hasApi) ready = ready && selectedPhoto;
+  if (ready) {
     if (useSendData) {
       tg.MainButton.setText('SUBMIT DEPOSIT');
       tg.MainButton.show();
@@ -275,53 +266,85 @@ function updateButton() {
       submitBtnEl.disabled = false;
     }
   } else {
-    if (useSendData) {
-      tg.MainButton.hide();
-    }
+    if (useSendData) tg.MainButton.hide();
     submitBtnEl.style.display = 'none';
   }
 }
 
-amountEl.addEventListener('input', function() {
-  errorEl.style.display = 'none';
-  updateButton();
-});
+amountEl.addEventListener('input', function() { errorEl.style.display = 'none'; updateButton(); });
 
-function handleSubmit() {
+function showStatus(text, icon) {
+  overlay.classList.add('visible');
+  document.getElementById('statusText').textContent = text;
+  if (icon) {
+    document.getElementById('statusSpinner').style.display = 'none';
+    document.getElementById('statusIcon').style.display = 'block';
+    document.getElementById('statusIcon').textContent = icon;
+  }
+}
+
+async function handleSubmit() {
   if (selectedAccId === null) {
     errorEl.textContent = 'Please select an account';
     errorEl.style.display = 'block';
     return;
   }
-
   var amountRaw = amountEl.value.trim();
   var amount = parseAmount(amountRaw);
 
+  if (hasApi && selectedPhoto) {
+    submitBtnEl.disabled = true;
+    showStatus('Sending deposit...');
+    try {
+      var fd = new FormData();
+      fd.append('photo', selectedPhoto);
+      fd.append('account_id', selectedAccId);
+      if (amount && amount > 0) {
+        fd.append('amount', String(amount));
+        fd.append('amount_display', amountRaw);
+      }
+      fd.append('init_data', tg.initData || '');
+
+      var resp = await fetch(apiUrl + '/api/deposit', { method: 'POST', body: fd });
+      var result = await resp.json();
+      if (result.ok) {
+        showStatus('Deposit sent!', '✅');
+        setTimeout(function() { try { tg.close(); } catch(e) {} }, 1500);
+      } else {
+        showStatus('Error: ' + (result.error || 'Unknown'), '❌');
+        setTimeout(function() {
+          overlay.classList.remove('visible');
+          document.getElementById('statusSpinner').style.display = 'block';
+          document.getElementById('statusIcon').style.display = 'none';
+          submitBtnEl.disabled = false;
+        }, 2500);
+      }
+    } catch(e) {
+      showStatus('Network error', '❌');
+      setTimeout(function() {
+        overlay.classList.remove('visible');
+        document.getElementById('statusSpinner').style.display = 'block';
+        document.getElementById('statusIcon').style.display = 'none';
+        submitBtnEl.disabled = false;
+      }, 2500);
+    }
+    return;
+  }
+
   if (useSendData) {
     var data = { account_id: selectedAccId };
-    if (amount && amount > 0) {
-      data.amount = amount;
-      data.amount_display = amountRaw;
-    }
+    if (amount && amount > 0) { data.amount = amount; data.amount_display = amountRaw; }
     tg.sendData(JSON.stringify(data));
     return;
   }
 
   var startParam = 'dep_' + selectedAccId;
-  if (amount && amount > 0) {
-    startParam += '_' + amount;
-  }
+  if (amount && amount > 0) startParam += '_' + amount;
   var url = 'https://t.me/' + botUsername + '?start=' + startParam;
-  try {
-    tg.openTelegramLink(url);
-  } catch(e) {
-    window.location.href = url;
-  }
+  try { tg.openTelegramLink(url); } catch(e) { window.location.href = url; }
 }
 
-if (useSendData) {
-  tg.MainButton.onClick(handleSubmit);
-}
+if (useSendData) tg.MainButton.onClick(handleSubmit);
 submitBtnEl.addEventListener('click', handleSubmit);
 </script>
 </body>
