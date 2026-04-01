@@ -3,393 +3,174 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Terminal — Deposit</title>
+<title>Deposit</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap">
 <style>
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap');
-
-:root {
-  --mt-bg: #131722;
-  --mt-panel: #1e222d;
-  --mt-panel-alt: #252a37;
-  --mt-toolbar: #2a2e39;
-  --mt-border: #363a45;
-  --mt-border-light: #434651;
-  --mt-text: #d1d4dc;
-  --mt-text-dim: #787b86;
-  --mt-green: #26a69a;
-  --mt-green-bright: #4caf50;
-  --mt-green-bg: rgba(38,166,154,0.1);
-  --mt-red: #ef5350;
-  --mt-red-bg: rgba(239,83,80,0.1);
-  --mt-blue: #2196f3;
-  --mt-blue-dim: #1976d2;
-  --mt-yellow: #ffb74d;
-  --mt-white: #e0e3eb;
-}
-
 * { margin: 0; padding: 0; box-sizing: border-box; }
-
 body {
-  font-family: 'Inter', -apple-system, sans-serif;
-  background: var(--mt-bg);
-  color: var(--mt-text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--tg-theme-bg-color, #1a1a2e);
+  color: var(--tg-theme-text-color, #eee);
+  padding: 16px;
   min-height: 100vh;
-  overflow-x: hidden;
 }
-
-/* ═══ TOOLBAR HEADER ═══ */
-.mt-toolbar {
-  background: linear-gradient(180deg, #2d3240, #252a37);
-  border-bottom: 1px solid var(--mt-border);
-  padding: 10px 12px;
-  display: flex; align-items: center; gap: 10px;
+h1 { font-size: 20px; font-weight: 600; margin-bottom: 16px; text-align: center; }
+.section-label {
+  font-size: 13px; font-weight: 600; text-transform: uppercase;
+  color: var(--tg-theme-hint-color, #999); margin: 20px 0 8px; padding-left: 4px;
 }
-.mt-toolbar-icon {
-  width: 32px; height: 32px; border-radius: 4px;
-  background: linear-gradient(135deg, var(--mt-green), #1b8a7a);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 16px; font-weight: 700; color: #fff;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+.acc-table {
+  border: 1px solid #363a45; border-radius: 6px; overflow: hidden;
+  background: var(--tg-theme-secondary-bg-color, #1e222d);
 }
-.mt-toolbar-title {
+.acc-table-head {
+  display: grid; grid-template-columns: 32px 1fr 64px 44px;
+  padding: 5px 10px; gap: 6px;
+  background: #252a37; border-bottom: 1px solid #363a45;
   font-family: 'JetBrains Mono', monospace;
-  font-size: 14px; font-weight: 600; color: var(--mt-white);
-  letter-spacing: 0.5px;
-}
-.mt-toolbar-info { flex: 1; }
-.mt-status-dot {
-  width: 8px; height: 8px; border-radius: 50%;
-  background: var(--mt-green); box-shadow: 0 0 6px var(--mt-green);
-  animation: pulse-dot 2s ease infinite;
-}
-@keyframes pulse-dot {
-  0%, 100% { opacity: 1; } 50% { opacity: 0.5; }
-}
-
-/* ═══ TICKER BAR ═══ */
-.mt-ticker {
-  background: var(--mt-panel);
-  border-bottom: 1px solid var(--mt-border);
-  padding: 6px 12px;
-  display: flex; align-items: center; gap: 16px;
-  overflow-x: auto;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-}
-.mt-ticker::-webkit-scrollbar { display: none; }
-.mt-tick { display: flex; align-items: center; gap: 4px; white-space: nowrap; }
-.mt-tick-label { color: var(--mt-text-dim); }
-.mt-tick-val { font-weight: 600; }
-.mt-tick-val.up { color: var(--mt-green); }
-.mt-tick-val.down { color: var(--mt-red); }
-
-/* ═══ MAIN CONTENT ═══ */
-.mt-content { padding: 0 12px 20px; }
-
-/* ═══ SECTION PANELS ═══ */
-.mt-section {
-  margin-top: 10px;
-  border: 1px solid var(--mt-border);
-  border-radius: 4px;
-  overflow: hidden;
-}
-.mt-section-header {
-  background: linear-gradient(180deg, var(--mt-toolbar), var(--mt-panel-alt));
-  border-bottom: 1px solid var(--mt-border);
-  padding: 7px 10px;
-  display: flex; align-items: center; gap: 6px;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px; font-weight: 600; color: var(--mt-text-dim);
-  text-transform: uppercase; letter-spacing: 0.8px;
-  user-select: none;
-}
-.mt-section-header .sh-icon { font-size: 12px; }
-.mt-section-body { background: var(--mt-panel); }
-
-/* ═══ ACCOUNT TABLE ═══ */
-.mt-table-head {
-  display: grid; grid-template-columns: 36px 1fr 70px 50px;
-  padding: 5px 10px; gap: 8px;
-  background: var(--mt-panel-alt);
-  border-bottom: 1px solid var(--mt-border);
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px; color: var(--mt-text-dim); text-transform: uppercase;
-  letter-spacing: 0.5px;
+  font-size: 10px; color: #787b86; text-transform: uppercase; letter-spacing: 0.5px;
 }
 .accounts { display: flex; flex-direction: column; }
 .acc-card {
-  display: grid; grid-template-columns: 36px 1fr 70px 50px;
-  padding: 10px; gap: 8px; align-items: center;
+  display: grid; grid-template-columns: 32px 1fr 64px 44px;
+  padding: 10px; gap: 6px; align-items: center;
   cursor: pointer; transition: background 0.1s;
-  border-bottom: 1px solid rgba(54,58,69,0.5);
-  position: relative;
+  border-bottom: 1px solid rgba(54,58,69,0.4);
 }
 .acc-card:last-child { border-bottom: none; }
-.acc-card:active { background: var(--mt-panel-alt); }
+.acc-card:active { background: #252a37; }
 .acc-card.selected {
-  background: var(--mt-green-bg);
-  border-left: 3px solid var(--mt-green);
+  background: rgba(38,166,154,0.08);
+  border-left: 3px solid #26a69a;
   padding-left: 7px;
 }
 .acc-idx {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 12px; font-weight: 600; color: var(--mt-text-dim);
-  text-align: center;
+  font-size: 12px; font-weight: 600; color: #787b86; text-align: center;
 }
-.acc-card.selected .acc-idx { color: var(--mt-green); }
+.acc-card.selected .acc-idx { color: #26a69a; }
 .acc-name {
-  font-size: 13px; font-weight: 500; color: var(--mt-white);
+  font-size: 13px; font-weight: 500; color: var(--tg-theme-text-color, #d1d4dc);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .acc-limit-val {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 12px; font-weight: 600; color: var(--mt-yellow);
-  text-align: right;
+  font-size: 12px; font-weight: 600; color: #ffb74d; text-align: right;
 }
 .acc-status-cell { text-align: center; }
 .acc-status-badge {
-  display: inline-block; padding: 2px 6px; border-radius: 3px;
+  display: inline-block; padding: 2px 5px; border-radius: 3px;
   font-family: 'JetBrains Mono', monospace;
-  font-size: 9px; font-weight: 700; letter-spacing: 0.5px;
+  font-size: 9px; font-weight: 700; letter-spacing: 0.3px;
 }
-.acc-status-badge.active { background: var(--mt-green-bg); color: var(--mt-green); }
-.acc-status-badge.pending { background: var(--mt-red-bg); color: var(--mt-red); }
-
-/* ═══ AMOUNT INPUT ═══ */
-.mt-input-row {
-  display: flex; align-items: stretch; gap: 0;
-  padding: 10px;
+.acc-status-badge.active { background: rgba(38,166,154,0.12); color: #26a69a; }
+.acc-status-badge.pending { background: rgba(239,83,80,0.12); color: #ef5350; }
+@keyframes rowSlide {
+  from { opacity: 0; transform: translateX(-6px); }
+  to { opacity: 1; transform: translateX(0); }
 }
-.mt-input-prefix {
-  background: var(--mt-toolbar);
-  border: 1px solid var(--mt-border); border-right: none;
-  border-radius: 3px 0 0 3px;
-  padding: 0 10px;
-  display: flex; align-items: center;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px; color: var(--mt-text-dim); font-weight: 600;
-  white-space: nowrap;
-}
+.acc-card { animation: rowSlide 0.2s ease forwards; }
+.acc-card:nth-child(1) { animation-delay: 0s; }
+.acc-card:nth-child(2) { animation-delay: 0.04s; }
+.acc-card:nth-child(3) { animation-delay: 0.08s; }
+.acc-card:nth-child(4) { animation-delay: 0.12s; }
+.acc-card:nth-child(5) { animation-delay: 0.16s; }
+.amount-wrap { position: relative; margin-top: 8px; }
 .amount-input {
-  flex: 1; padding: 10px 12px;
-  border: 1px solid var(--mt-border); border-radius: 0 3px 3px 0;
-  background: var(--mt-bg);
-  color: var(--mt-green-bright); font-family: 'JetBrains Mono', monospace;
-  font-size: 16px; font-weight: 700; outline: none;
-  transition: border-color 0.15s;
-  min-width: 0;
+  width: 100%; padding: 14px 16px;
+  border: 2px solid var(--tg-theme-secondary-bg-color, #2a2a4a); border-radius: 12px;
+  background: var(--tg-theme-secondary-bg-color, #2a2a4a);
+  color: var(--tg-theme-text-color, #eee); font-size: 17px; font-weight: 500;
+  outline: none; transition: border-color 0.15s;
 }
-.amount-input:focus { border-color: var(--mt-blue); }
-.amount-input::placeholder {
-  color: var(--mt-text-dim); font-weight: 400; font-size: 13px;
-}
-.mt-input-hint {
-  padding: 4px 10px 8px;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px; color: var(--mt-text-dim);
-}
+.amount-input:focus { border-color: var(--tg-theme-button-color, #3390ec); }
+.amount-input::placeholder { color: var(--tg-theme-hint-color, #aaa); font-weight: 400; }
+.hint { font-size: 12px; color: var(--tg-theme-hint-color, #999); margin-top: 6px; padding-left: 4px; }
+.error-msg { color: #e53935; font-size: 13px; margin-top: 8px; padding-left: 4px; display: none; }
+.empty-state { text-align: center; padding: 40px 20px; color: var(--tg-theme-hint-color, #999); font-size: 15px; }
 
-/* ═══ PHOTO AREA ═══ */
 .photo-area {
-  margin: 10px; border: 1px dashed var(--mt-border-light);
-  border-radius: 4px; padding: 20px 16px; text-align: center;
-  cursor: pointer; transition: all 0.15s; position: relative; overflow: hidden;
-  background: repeating-linear-gradient(
-    45deg, transparent, transparent 10px,
-    rgba(54,58,69,0.15) 10px, rgba(54,58,69,0.15) 20px
-  );
+  margin-top: 8px; border: 2px dashed var(--tg-theme-hint-color, #555); border-radius: 12px;
+  padding: 24px 16px; text-align: center; cursor: pointer; transition: border-color 0.15s;
+  position: relative; overflow: hidden;
 }
-.photo-area:active { background-color: var(--mt-panel-alt); }
-.photo-area.has-photo {
-  border-style: solid; border-color: var(--mt-green); padding: 0;
-  background: none;
-}
+.photo-area.has-photo { border-style: solid; border-color: var(--tg-theme-button-color, #3390ec); padding: 0; }
 .photo-area img {
-  width: 100%; max-height: 280px; object-fit: cover; border-radius: 3px;
-  display: block;
+  width: 100%; max-height: 300px; object-fit: cover; border-radius: 10px; display: block;
 }
-.photo-placeholder {
-  color: var(--mt-text-dim);
-  font-family: 'JetBrains Mono', monospace; font-size: 12px;
-}
-.photo-placeholder .icon { font-size: 28px; display: block; margin-bottom: 6px; }
+.photo-placeholder { color: var(--tg-theme-hint-color, #999); font-size: 14px; }
+.photo-placeholder .icon { font-size: 32px; display: block; margin-bottom: 8px; }
 .photo-remove {
-  position: absolute; top: 6px; right: 6px; width: 26px; height: 26px;
-  background: rgba(0,0,0,0.8); color: var(--mt-red);
-  border: 1px solid var(--mt-red); border-radius: 3px;
-  font-size: 13px; cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-  font-weight: 700;
+  position: absolute; top: 8px; right: 8px; width: 28px; height: 28px;
+  background: rgba(0,0,0,0.6); color: #fff; border: none; border-radius: 50%;
+  font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center;
 }
 
-/* ═══ ERROR ═══ */
-.error-msg {
-  color: var(--mt-red); font-family: 'JetBrains Mono', monospace;
-  font-size: 11px; margin: 6px 12px 0; padding: 6px 8px;
-  display: none; font-weight: 500;
-  background: var(--mt-red-bg); border-left: 3px solid var(--mt-red);
-  border-radius: 0 3px 3px 0;
-}
-
-/* ═══ SUBMIT BUTTON ═══ */
 .submit-btn {
-  display: none; width: calc(100% - 24px); margin: 14px 12px 0;
-  padding: 10px; border: 1px solid var(--mt-border-light); border-radius: 3px;
-  background: var(--mt-toolbar);
-  color: var(--mt-text); font-family: 'JetBrains Mono', monospace;
-  font-size: 12px; font-weight: 600; letter-spacing: 0.5px;
-  cursor: pointer; transition: background 0.15s;
+  display: none; width: 100%; padding: 14px; margin-top: 20px; border: none; border-radius: 12px;
+  background: var(--tg-theme-button-color, #3390ec);
+  color: var(--tg-theme-button-text-color, #fff);
+  font-size: 16px; font-weight: 600; cursor: pointer; transition: opacity 0.15s;
 }
-.submit-btn:active { background: var(--mt-panel-alt); }
-.submit-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+.submit-btn:active { opacity: 0.8; }
+.submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-/* ═══ EMPTY STATE ═══ */
-.empty-state {
-  text-align: center; padding: 50px 20px; color: var(--mt-text-dim);
-  font-family: 'JetBrains Mono', monospace; font-size: 13px;
-}
-.empty-state .empty-icon { font-size: 40px; display: block; margin-bottom: 10px; opacity: 0.5; }
-
-/* ═══ STATUS OVERLAY ═══ */
 .status-overlay {
   display: none; position: fixed; inset: 0;
-  background: var(--mt-bg);
-  z-index: 100; justify-content: center; align-items: center;
-  flex-direction: column; gap: 14px;
+  background: var(--tg-theme-bg-color, #1a1a2e);
+  z-index: 100; justify-content: center; align-items: center; flex-direction: column; gap: 16px;
 }
 .status-overlay.visible { display: flex; }
 .spinner {
-  width: 40px; height: 40px;
-  border: 3px solid var(--mt-border);
-  border-top-color: var(--mt-green);
-  border-radius: 50%; animation: spin 0.7s linear infinite;
+  width: 40px; height: 40px; border: 3px solid var(--tg-theme-hint-color, #555);
+  border-top-color: var(--tg-theme-button-color, #3390ec);
+  border-radius: 50%; animation: spin 0.8s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
-.status-text {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 13px; font-weight: 600; color: var(--mt-text);
-  letter-spacing: 0.5px;
-}
-.status-icon { font-size: 44px; }
-
-/* ═══ BOTTOM STATUS BAR ═══ */
-.mt-statusbar {
-  position: fixed; bottom: 0; left: 0; right: 0;
-  background: var(--mt-toolbar);
-  border-top: 1px solid var(--mt-border);
-  padding: 4px 12px; display: flex; align-items: center; gap: 12px;
-  font-family: 'JetBrains Mono', monospace; font-size: 10px;
-  color: var(--mt-text-dim); z-index: 50;
-}
-.mt-statusbar .sb-dot {
-  width: 6px; height: 6px; border-radius: 50%;
-  background: var(--mt-green);
-}
-.mt-statusbar .sb-fill { flex: 1; }
-
-/* ═══ ANIMATIONS ═══ */
-@keyframes rowSlide {
-  from { opacity: 0; transform: translateX(-8px); }
-  to { opacity: 1; transform: translateX(0); }
-}
-.acc-card { animation: rowSlide 0.25s ease forwards; }
-.acc-card:nth-child(1) { animation-delay: 0s; }
-.acc-card:nth-child(2) { animation-delay: 0.05s; }
-.acc-card:nth-child(3) { animation-delay: 0.1s; }
-.acc-card:nth-child(4) { animation-delay: 0.15s; }
-.acc-card:nth-child(5) { animation-delay: 0.2s; }
+.status-text { font-size: 16px; font-weight: 500; }
+.status-icon { font-size: 48px; }
 </style>
 </head>
 <body>
 
-<!-- TOOLBAR -->
-<div class="mt-toolbar">
-  <div class="mt-toolbar-icon">T</div>
-  <div class="mt-toolbar-info">
-    <div class="mt-toolbar-title">DEPOSIT TERMINAL</div>
-  </div>
-  <div class="mt-status-dot"></div>
-</div>
+<h1>📤 Deposit</h1>
 
-<!-- TICKER BAR -->
-<div class="mt-ticker" id="tickerBar">
-  <div class="mt-tick"><span class="mt-tick-label">SRV</span> <span class="mt-tick-val up">Online</span></div>
-  <div class="mt-tick"><span class="mt-tick-label">PING</span> <span class="mt-tick-val" id="pingVal">24ms</span></div>
-  <div class="mt-tick"><span class="mt-tick-label">ACC</span> <span class="mt-tick-val" id="accCount">0</span></div>
-  <div class="mt-tick"><span class="mt-tick-label">TIME</span> <span class="mt-tick-val" id="timeVal">--:--:--</span></div>
-</div>
-
-<div class="mt-content" id="content">
-
-  <!-- ACCOUNTS TABLE -->
-  <div class="mt-section">
-    <div class="mt-section-header">
-      <span class="sh-icon">◼</span> Accounts
+<div id="content">
+  <div class="section-label">Select account</div>
+  <div class="acc-table">
+    <div class="acc-table-head">
+      <span>#</span><span>Name</span><span style="text-align:right">Limit</span><span style="text-align:center">Sts</span>
     </div>
-    <div class="mt-section-body">
-      <div class="mt-table-head">
-        <span>#</span><span>Symbol</span><span style="text-align:right">Limit</span><span style="text-align:center">Sts</span>
-      </div>
-      <div class="accounts" id="accountList"></div>
-    </div>
+    <div class="accounts" id="accountList"></div>
   </div>
 
-  <!-- VOLUME / AMOUNT -->
-  <div class="mt-section">
-    <div class="mt-section-header">
-      <span class="sh-icon">◼</span> Volume
-    </div>
-    <div class="mt-section-body">
-      <div class="mt-input-row">
-        <div class="mt-input-prefix">VOL</div>
-        <input type="text" class="amount-input" id="amountInput"
-               placeholder="50000 / 50k / 1.5m" inputmode="text" autocomplete="off">
-      </div>
-      <div class="mt-input-hint">Format: numbers, k (×1000), m (×1000000)</div>
-    </div>
+  <div class="section-label" style="margin-top:24px">Amount</div>
+  <div class="amount-wrap">
+    <input type="text" class="amount-input" id="amountInput"
+           placeholder="e.g. 50000 or 50k" inputmode="text" autocomplete="off">
   </div>
+  <div class="hint">Numbers, k (thousands), m (millions)</div>
 
-  <!-- PROOF / PHOTO -->
-  <div class="mt-section" id="photoSection">
-    <div class="mt-section-header">
-      <span class="sh-icon">◼</span> Attach Receipt
-    </div>
-    <div class="mt-section-body">
-      <div class="photo-area" id="photoArea">
-        <div class="photo-placeholder">
-          <span class="icon">📎</span>
-          Tap to attach check photo
-        </div>
-      </div>
+  <div class="section-label" id="photoLabel" style="margin-top:24px">Check photo</div>
+  <div class="photo-area" id="photoArea">
+    <div class="photo-placeholder">
+      <span class="icon">📷</span>
+      Tap to take or select photo
     </div>
   </div>
   <input type="file" id="photoInput" accept="image/*" capture="environment" style="display:none">
 
   <div class="error-msg" id="errorMsg"></div>
-  <button class="submit-btn" id="submitBtn">▶ EXECUTE DEPOSIT</button>
-
-  <div style="height:28px"></div>
+  <button class="submit-btn" id="submitBtn">📤 SUBMIT DEPOSIT</button>
 </div>
 
-<div class="empty-state" id="emptyState" style="display:none">
-  <span class="empty-icon">⊘</span>
-  No instruments available
-</div>
+<div class="empty-state" id="emptyState" style="display:none">No active accounts available</div>
 
-<!-- STATUS OVERLAY -->
 <div class="status-overlay" id="statusOverlay">
   <div class="spinner" id="statusSpinner"></div>
   <div class="status-icon" id="statusIcon" style="display:none"></div>
-  <div class="status-text" id="statusText">Executing order...</div>
-</div>
-
-<!-- BOTTOM STATUS BAR -->
-<div class="mt-statusbar" id="bottomBar">
-  <span class="sb-dot"></span>
-  <span>Connected</span>
-  <span class="sb-fill"></span>
-  <span id="sbTime">--:--</span>
+  <div class="status-text" id="statusText">Sending deposit...</div>
 </div>
 
 <script>
@@ -451,10 +232,9 @@ var photoInput = document.getElementById('photoInput');
 var overlay = document.getElementById('statusOverlay');
 
 if (!hasApi) {
-  document.getElementById('photoSection').style.display = 'none';
+  document.getElementById('photoLabel').style.display = 'none';
+  photoArea.style.display = 'none';
 }
-
-document.getElementById('accCount').textContent = accounts.length;
 
 if (!accounts.length) {
   contentEl.style.display = 'none';
@@ -496,7 +276,7 @@ photoInput.addEventListener('change', function() {
       selectedPhoto = null;
       photoInput.value = '';
       photoArea.classList.remove('has-photo');
-      photoArea.innerHTML = '<div class="photo-placeholder"><span class="icon">📎</span>Tap to attach check photo</div>';
+      photoArea.innerHTML = '<div class="photo-placeholder"><span class="icon">📷</span>Tap to take or select photo</div>';
       updateButton();
     });
     updateButton();
@@ -527,7 +307,7 @@ function updateButton() {
   if (hasApi) ready = ready && selectedPhoto;
   if (ready) {
     if (useSendData) {
-      tg.MainButton.setText('▶ EXECUTE DEPOSIT');
+      tg.MainButton.setText('SUBMIT DEPOSIT');
       tg.MainButton.show();
       tg.MainButton.enable();
     } else {
@@ -543,10 +323,10 @@ function updateButton() {
 amountEl.addEventListener('input', function() {
   var val = amountEl.value.trim();
   if (val && !parseAmount(val)) {
-    errorEl.textContent = 'Invalid volume. Use: 50000, 50k, 1.5m';
+    errorEl.textContent = 'Invalid amount. Use numbers: 50000, 50k, 1.5m';
     errorEl.style.display = 'block';
   } else if (val && parseAmount(val) === 0) {
-    errorEl.textContent = 'Volume must be > 0';
+    errorEl.textContent = 'Amount must be greater than 0';
     errorEl.style.display = 'block';
   } else {
     errorEl.style.display = 'none';
@@ -566,7 +346,7 @@ function showStatus(text, icon) {
 
 async function handleSubmit() {
   if (selectedAccId === null) {
-    errorEl.textContent = 'Select instrument first';
+    errorEl.textContent = 'Please select an account';
     errorEl.style.display = 'block';
     return;
   }
@@ -574,14 +354,14 @@ async function handleSubmit() {
   var amount = parseAmount(amountRaw);
 
   if (!amount || amount <= 0) {
-    errorEl.textContent = 'Enter volume. Example: 50000, 50k, 1.5m';
+    errorEl.textContent = 'Enter amount. Example: 50000, 50k, 1.5m';
     errorEl.style.display = 'block';
     return;
   }
 
   if (hasApi && selectedPhoto) {
     submitBtnEl.disabled = true;
-    showStatus('Executing order...');
+    showStatus('Sending deposit...');
     try {
       var fd = new FormData();
       fd.append('photo', selectedPhoto);
@@ -595,10 +375,10 @@ async function handleSubmit() {
       var resp = await fetch(apiUrl + '/api/deposit', { method: 'POST', body: fd });
       var result = await resp.json();
       if (result.ok) {
-        showStatus('Order executed', '✔');
+        showStatus('Deposit sent!', '✅');
         setTimeout(function() { try { tg.close(); } catch(e) {} }, 1500);
       } else {
-        showStatus('Rejected: ' + (result.error || 'Unknown'), '✘');
+        showStatus('Error: ' + (result.error || 'Unknown'), '❌');
         setTimeout(function() {
           overlay.classList.remove('visible');
           document.getElementById('statusSpinner').style.display = 'block';
@@ -607,7 +387,7 @@ async function handleSubmit() {
         }, 2500);
       }
     } catch(e) {
-      showStatus('Connection lost', '✘');
+      showStatus('Network error', '❌');
       setTimeout(function() {
         overlay.classList.remove('visible');
         document.getElementById('statusSpinner').style.display = 'block';
@@ -633,28 +413,6 @@ async function handleSubmit() {
 
 if (useSendData) tg.MainButton.onClick(handleSubmit);
 submitBtnEl.addEventListener('click', handleSubmit);
-
-/* Live clock in ticker and statusbar */
-function updateClock() {
-  var now = new Date();
-  var h = String(now.getHours()).padStart(2,'0');
-  var m = String(now.getMinutes()).padStart(2,'0');
-  var s = String(now.getSeconds()).padStart(2,'0');
-  var full = h + ':' + m + ':' + s;
-  document.getElementById('timeVal').textContent = full;
-  document.getElementById('sbTime').textContent = h + ':' + m;
-}
-updateClock();
-setInterval(updateClock, 1000);
-
-var pingEl = document.getElementById('pingVal');
-function fakePing() {
-  var p = 18 + Math.floor(Math.random() * 20);
-  pingEl.textContent = p + 'ms';
-  pingEl.className = 'mt-tick-val ' + (p < 30 ? 'up' : '');
-}
-fakePing();
-setInterval(fakePing, 3000);
 </script>
 </body>
 </html>
