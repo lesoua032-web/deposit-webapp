@@ -350,14 +350,12 @@ function renderChecks() {
 
 function updateTotal() {
   var total = 0;
-  var count = 0;
   checks.forEach(function(chk) {
     if (chk.amount_parsed && chk.amount_parsed > 0) {
       total += chk.amount_parsed;
-      count++;
     }
   });
-  if (checks.length >= 2) {
+  if (checks.length > 0) {
     totalBar.style.display = 'block';
     totalValueEl.textContent = total > 0 ? formatNum(total) : '0';
   } else {
