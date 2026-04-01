@@ -254,7 +254,9 @@ function parseAmount(str) {
 }
 
 function updateButton() {
-  var ready = selectedAccId !== null;
+  var val = amountEl.value.trim();
+  var amountOk = !val || parseAmount(val);
+  var ready = selectedAccId !== null && amountOk;
   if (hasApi) ready = ready && selectedPhoto;
   if (ready) {
     if (useSendData) {
@@ -271,7 +273,16 @@ function updateButton() {
   }
 }
 
-amountEl.addEventListener('input', function() { errorEl.style.display = 'none'; updateButton(); });
+amountEl.addEventListener('input', function() {
+  var val = amountEl.value.trim();
+  if (val && !parseAmount(val)) {
+    errorEl.textContent = 'Invalid amount. Use numbers: 50000, 50k, 1.5m';
+    errorEl.style.display = 'block';
+  } else {
+    errorEl.style.display = 'none';
+  }
+  updateButton();
+});
 
 function showStatus(text, icon) {
   overlay.classList.add('visible');
