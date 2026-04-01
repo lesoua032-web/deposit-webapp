@@ -377,34 +377,37 @@ async function handleSubmit() {
 
   if (hasApi && selectedPhotos.length > 0) {
     submitBtnEl.disabled = true;
-    var total = selectedPhotos.length;
-    var ok = 0, fail = 0;
+    showStatus('Sending deposit...');
+    try {
+      var fd = new FormData();
+      selectedPhotos.forEach(function(p) { fd.append('photo', p.file); });
+      fd.append('account_id', selectedAccId);
+      fd.append('amount', String(amount));
+      fd.append('amount_display', amountRaw);
+      fd.append('init_data', tg.initData || '');
 
-    for (var s = 0; s < total; s++) {
-      showStatus(total > 1 ? 'Sending ' + (s + 1) + '/' + total + '...' : 'Sending deposit...');
-      try {
-        var fd = new FormData();
-        fd.append('photo', selectedPhotos[s].file);
-        fd.append('account_id', selectedAccId);
-        fd.append('amount', String(amount));
-        fd.append('amount_display', amountRaw);
-        fd.append('init_data', tg.initData || '');
-
-        var resp = await fetch(apiUrl + '/api/deposit', { method: 'POST', body: fd });
-        var result = await resp.json();
-        if (result.ok) ok++; else fail++;
-      } catch(e) { fail++; }
-    }
-
-    if (fail === 0) {
-      showStatus(total > 1 ? 'All ' + total + ' checks sent!' : 'Deposit sent!', '✅');
-      setTimeout(function() { try { tg.close(); } catch(e) {} }, 1500);
-    } else {
-      showStatus(ok + '/' + total + ' sent, ' + fail + ' failed', '⚠️');
+      var resp = await fetch(apiUrl + '/api/deposit', { method: 'POST', body: fd });
+      var result = await resp.json();
+      if (result.ok) {
+        showStatus('Deposit sent!', '✅');
+        setTimeout(function() { try { tg.close(); } catch(e) {} }, 1500);
+      } else {
+        showStatus('Error: ' + (result.error || 'Unknown'), '❌');
+        setTimeout(function() {
+          overlay.classList.remove('visible');
+          document.getElementById('statusSpinner').style.display = 'block';
+          document.getElementById('statusIcon').style.display = 'none';
+          submitBtnEl.disabled = false;
+        }, 2500);
+      }
+    } catch(e) {
+      showStatus('Network error', '❌');
       setTimeout(function() {
         overlay.classList.remove('visible');
+        document.getElementById('statusSpinner').style.display = 'block';
+        document.getElementById('statusIcon').style.display = 'none';
         submitBtnEl.disabled = false;
-      }, 3000);
+      }, 2500);
     }
     return;
   }
