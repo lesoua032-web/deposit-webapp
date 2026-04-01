@@ -57,11 +57,6 @@ body {
   font-size: 14px; font-weight: 600; color: var(--mt-white);
   letter-spacing: 0.5px;
 }
-.mt-toolbar-sub {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px; color: var(--mt-text-dim);
-  letter-spacing: 0.3px;
-}
 .mt-toolbar-info { flex: 1; }
 .mt-status-dot {
   width: 8px; height: 8px; border-radius: 50%;
@@ -240,15 +235,14 @@ body {
 /* ═══ SUBMIT BUTTON ═══ */
 .submit-btn {
   display: none; width: calc(100% - 24px); margin: 14px 12px 0;
-  padding: 12px; border: none; border-radius: 4px;
-  background: linear-gradient(180deg, #2bbd7e, var(--mt-green));
-  color: #fff; font-family: 'JetBrains Mono', monospace;
-  font-size: 13px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
-  cursor: pointer; transition: all 0.15s;
-  box-shadow: 0 2px 8px rgba(38,166,154,0.3);
+  padding: 10px; border: 1px solid var(--mt-border-light); border-radius: 3px;
+  background: var(--mt-toolbar);
+  color: var(--mt-text); font-family: 'JetBrains Mono', monospace;
+  font-size: 12px; font-weight: 600; letter-spacing: 0.5px;
+  cursor: pointer; transition: background 0.15s;
 }
-.submit-btn:active { transform: translateY(1px); box-shadow: 0 1px 4px rgba(38,166,154,0.2); }
-.submit-btn:disabled { opacity: 0.35; cursor: not-allowed; box-shadow: none; }
+.submit-btn:active { background: var(--mt-panel-alt); }
+.submit-btn:disabled { opacity: 0.3; cursor: not-allowed; }
 
 /* ═══ EMPTY STATE ═══ */
 .empty-state {
@@ -314,7 +308,6 @@ body {
   <div class="mt-toolbar-icon">T</div>
   <div class="mt-toolbar-info">
     <div class="mt-toolbar-title">DEPOSIT TERMINAL</div>
-    <div class="mt-toolbar-sub">New Order — Market Execution</div>
   </div>
   <div class="mt-status-dot"></div>
 </div>
@@ -332,7 +325,7 @@ body {
   <!-- ACCOUNTS TABLE -->
   <div class="mt-section">
     <div class="mt-section-header">
-      <span class="sh-icon">◼</span> Market Watch — Accounts
+      <span class="sh-icon">◼</span> Accounts
     </div>
     <div class="mt-section-body">
       <div class="mt-table-head">
