@@ -255,7 +255,8 @@ function parseAmount(str) {
 
 function updateButton() {
   var val = amountEl.value.trim();
-  var amountOk = !val || parseAmount(val);
+  var amountParsed = parseAmount(val);
+  var amountOk = amountParsed && amountParsed > 0;
   var ready = selectedAccId !== null && amountOk;
   if (hasApi) ready = ready && selectedPhoto;
   if (ready) {
@@ -277,6 +278,9 @@ amountEl.addEventListener('input', function() {
   var val = amountEl.value.trim();
   if (val && !parseAmount(val)) {
     errorEl.textContent = 'Invalid amount. Use numbers: 50000, 50k, 1.5m';
+    errorEl.style.display = 'block';
+  } else if (val && parseAmount(val) === 0) {
+    errorEl.textContent = 'Amount must be greater than 0';
     errorEl.style.display = 'block';
   } else {
     errorEl.style.display = 'none';
@@ -302,6 +306,12 @@ async function handleSubmit() {
   }
   var amountRaw = amountEl.value.trim();
   var amount = parseAmount(amountRaw);
+
+  if (!amount || amount <= 0) {
+    errorEl.textContent = 'Enter amount. Example: 50000, 50k, 1.5m';
+    errorEl.style.display = 'block';
+    return;
+  }
 
   if (hasApi && selectedPhoto) {
     submitBtnEl.disabled = true;
