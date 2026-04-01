@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Deposit</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap">
+
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
@@ -20,62 +20,24 @@ h1 { font-size: 20px; font-weight: 600; margin-bottom: 16px; text-align: center;
   font-size: 13px; font-weight: 600; text-transform: uppercase;
   color: var(--tg-theme-hint-color, #999); margin: 20px 0 8px; padding-left: 4px;
 }
-.acc-table {
-  border: 1px solid #363a45; border-radius: 6px; overflow: hidden;
-  background: var(--tg-theme-secondary-bg-color, #1e222d);
-}
-.acc-table-head {
-  display: grid; grid-template-columns: 32px 1fr 64px 44px;
-  padding: 5px 10px; gap: 6px;
-  background: #252a37; border-bottom: 1px solid #363a45;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px; color: #787b86; text-transform: uppercase; letter-spacing: 0.5px;
-}
-.accounts { display: flex; flex-direction: column; }
+.accounts { display: flex; flex-direction: column; gap: 8px; }
 .acc-card {
-  display: grid; grid-template-columns: 32px 1fr 64px 44px;
-  padding: 10px; gap: 6px; align-items: center;
-  cursor: pointer; transition: background 0.1s;
-  border-bottom: 1px solid rgba(54,58,69,0.4);
+  background: var(--tg-theme-secondary-bg-color, #2a2a4a);
+  border: 2px solid transparent; border-radius: 12px; padding: 14px 16px;
+  cursor: pointer; transition: border-color 0.15s, transform 0.1s;
+  display: flex; align-items: center; gap: 12px;
 }
-.acc-card:last-child { border-bottom: none; }
-.acc-card:active { background: #252a37; }
-.acc-card.selected {
-  background: rgba(38,166,154,0.08);
-  border-left: 3px solid #26a69a;
-  padding-left: 7px;
+.acc-card:active { transform: scale(0.98); }
+.acc-card.selected { border-color: var(--tg-theme-button-color, #3390ec); }
+.acc-icon {
+  width: 40px; height: 40px; border-radius: 10px;
+  background: var(--tg-theme-button-color, #3390ec);
+  color: var(--tg-theme-button-text-color, #fff);
+  display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0;
 }
-.acc-idx {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 12px; font-weight: 600; color: #787b86; text-align: center;
-}
-.acc-card.selected .acc-idx { color: #26a69a; }
-.acc-name {
-  font-size: 13px; font-weight: 500; color: var(--tg-theme-text-color, #d1d4dc);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-.acc-limit-val {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 12px; font-weight: 600; color: #ffb74d; text-align: right;
-}
-.acc-status-cell { text-align: center; }
-.acc-status-badge {
-  display: inline-block; padding: 2px 5px; border-radius: 3px;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 9px; font-weight: 700; letter-spacing: 0.3px;
-}
-.acc-status-badge.active { background: rgba(38,166,154,0.12); color: #26a69a; }
-.acc-status-badge.pending { background: rgba(239,83,80,0.12); color: #ef5350; }
-@keyframes rowSlide {
-  from { opacity: 0; transform: translateX(-6px); }
-  to { opacity: 1; transform: translateX(0); }
-}
-.acc-card { animation: rowSlide 0.2s ease forwards; }
-.acc-card:nth-child(1) { animation-delay: 0s; }
-.acc-card:nth-child(2) { animation-delay: 0.04s; }
-.acc-card:nth-child(3) { animation-delay: 0.08s; }
-.acc-card:nth-child(4) { animation-delay: 0.12s; }
-.acc-card:nth-child(5) { animation-delay: 0.16s; }
+.acc-info { flex: 1; min-width: 0; }
+.acc-name { font-size: 15px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.acc-limit { font-size: 13px; color: var(--tg-theme-hint-color, #999); margin-top: 2px; }
 .amount-wrap { position: relative; margin-top: 8px; }
 .amount-input {
   width: 100%; padding: 14px 16px;
@@ -138,12 +100,7 @@ h1 { font-size: 20px; font-weight: 600; margin-bottom: 16px; text-align: center;
 
 <div id="content">
   <div class="section-label">Select account</div>
-  <div class="acc-table">
-    <div class="acc-table-head">
-      <span>#</span><span>Name</span><span style="text-align:right">Limit</span><span style="text-align:center">Sts</span>
-    </div>
-    <div class="accounts" id="accountList"></div>
-  </div>
+  <div class="accounts" id="accountList"></div>
 
   <div class="section-label" style="margin-top:24px">Amount</div>
   <div class="amount-wrap">
@@ -240,18 +197,16 @@ if (!accounts.length) {
   contentEl.style.display = 'none';
   emptyEl.style.display = 'block';
 } else {
-  accounts.forEach(function(acc, idx) {
+  accounts.forEach(function(acc) {
     var card = document.createElement('div');
     card.className = 'acc-card';
     card.dataset.id = acc.id;
-    var isActive = acc.status === 'Active';
-    var limitText = acc.limit ? (acc.limit >= 1000 ? Math.round(acc.limit/1000) + 'k' : acc.limit) : '—';
+    var statusIcon = acc.status === 'Active' ? '✅' : '❗';
+    var limitText = acc.limit ? (acc.limit >= 1000 ? Math.round(acc.limit/1000) + 'k' : acc.limit) : '';
     card.innerHTML =
-      '<div class="acc-idx">' + (idx + 1) + '</div>' +
+      '<div class="acc-icon">🏦</div><div class="acc-info">' +
       '<div class="acc-name">' + escapeHtml(acc.name) + '</div>' +
-      '<div class="acc-limit-val">' + limitText + '</div>' +
-      '<div class="acc-status-cell"><span class="acc-status-badge ' +
-        (isActive ? 'active">ON' : 'pending">OFF') + '</span></div>';
+      '<div class="acc-limit">' + statusIcon + (limitText ? ' Limit: ' + limitText : '') + '</div></div>';
     card.addEventListener('click', function() {
       document.querySelectorAll('.acc-card').forEach(function(c) { c.classList.remove('selected'); });
       card.classList.add('selected');
