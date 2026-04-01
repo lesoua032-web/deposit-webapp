@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Deposit</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
-
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
@@ -38,36 +37,73 @@ h1 { font-size: 20px; font-weight: 600; margin-bottom: 16px; text-align: center;
 .acc-info { flex: 1; min-width: 0; }
 .acc-name { font-size: 15px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .acc-limit { font-size: 13px; color: var(--tg-theme-hint-color, #999); margin-top: 2px; }
-.amount-wrap { position: relative; margin-top: 8px; }
-.amount-input {
-  width: 100%; padding: 14px 16px;
-  border: 2px solid var(--tg-theme-secondary-bg-color, #2a2a4a); border-radius: 12px;
+
+/* Check entry (photo + amount row) */
+.checks-list { display: flex; flex-direction: column; gap: 10px; }
+.check-entry {
   background: var(--tg-theme-secondary-bg-color, #2a2a4a);
-  color: var(--tg-theme-text-color, #eee); font-size: 17px; font-weight: 500;
+  border-radius: 12px; overflow: hidden;
+}
+.check-entry-top {
+  position: relative; cursor: pointer;
+}
+.check-entry-top img {
+  width: 100%; max-height: 200px; object-fit: cover; display: block;
+}
+.check-entry-placeholder {
+  padding: 20px 16px; text-align: center;
+  color: var(--tg-theme-hint-color, #999); font-size: 14px;
+}
+.check-entry-placeholder .icon { font-size: 28px; display: block; margin-bottom: 6px; }
+.check-remove {
+  position: absolute; top: 6px; right: 6px; width: 26px; height: 26px;
+  background: rgba(0,0,0,0.6); color: #fff; border: none; border-radius: 50%;
+  font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+}
+.check-num {
+  position: absolute; top: 6px; left: 6px;
+  background: rgba(0,0,0,0.6); color: #fff; border-radius: 50%;
+  width: 24px; height: 24px; font-size: 12px; font-weight: 600;
+  display: flex; align-items: center; justify-content: center;
+}
+.check-entry-bottom { padding: 10px 12px; }
+.check-amount-input {
+  width: 100%; padding: 10px 12px;
+  border: 2px solid transparent; border-radius: 8px;
+  background: var(--tg-theme-bg-color, #1a1a2e);
+  color: var(--tg-theme-text-color, #eee); font-size: 15px; font-weight: 500;
   outline: none; transition: border-color 0.15s;
 }
-.amount-input:focus { border-color: var(--tg-theme-button-color, #3390ec); }
-.amount-input::placeholder { color: var(--tg-theme-hint-color, #aaa); font-weight: 400; }
+.check-amount-input:focus { border-color: var(--tg-theme-button-color, #3390ec); }
+.check-amount-input::placeholder { color: var(--tg-theme-hint-color, #aaa); font-weight: 400; }
+.check-amount-error {
+  color: #e53935; font-size: 11px; margin-top: 4px; padding-left: 4px; display: none;
+}
+
+/* Add button */
+.add-check-btn {
+  width: 100%; padding: 14px; margin-top: 2px; border: 2px dashed var(--tg-theme-hint-color, #555);
+  border-radius: 12px; background: transparent;
+  color: var(--tg-theme-hint-color, #999); font-size: 14px; font-weight: 500;
+  cursor: pointer; transition: border-color 0.15s, color 0.15s;
+}
+.add-check-btn:active { border-color: var(--tg-theme-button-color, #3390ec); color: var(--tg-theme-button-color, #3390ec); }
+
+/* Total bar */
+.total-bar {
+  display: none; margin-top: 12px; padding: 12px 16px;
+  background: var(--tg-theme-secondary-bg-color, #2a2a4a);
+  border-radius: 12px; text-align: right;
+  font-size: 16px; font-weight: 600;
+}
+.total-bar .total-label {
+  color: var(--tg-theme-hint-color, #999); font-size: 13px; font-weight: 500;
+}
+.total-bar .total-value { color: var(--tg-theme-text-color, #eee); margin-left: 8px; }
+
 .hint { font-size: 12px; color: var(--tg-theme-hint-color, #999); margin-top: 6px; padding-left: 4px; }
 .error-msg { color: #e53935; font-size: 13px; margin-top: 8px; padding-left: 4px; display: none; }
 .empty-state { text-align: center; padding: 40px 20px; color: var(--tg-theme-hint-color, #999); font-size: 15px; }
-
-.photo-area {
-  margin-top: 8px; border: 2px dashed var(--tg-theme-hint-color, #555); border-radius: 12px;
-  padding: 24px 16px; text-align: center; cursor: pointer; transition: border-color 0.15s;
-  position: relative; overflow: hidden;
-}
-.photo-area.has-photo { border-style: solid; border-color: var(--tg-theme-button-color, #3390ec); padding: 0; }
-.photo-area img {
-  width: 100%; max-height: 300px; object-fit: cover; border-radius: 10px; display: block;
-}
-.photo-placeholder { color: var(--tg-theme-hint-color, #999); font-size: 14px; }
-.photo-placeholder .icon { font-size: 32px; display: block; margin-bottom: 8px; }
-.photo-remove {
-  position: absolute; top: 8px; right: 8px; width: 28px; height: 28px;
-  background: rgba(0,0,0,0.6); color: #fff; border: none; border-radius: 50%;
-  font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center;
-}
 
 .submit-btn {
   display: none; width: 100%; padding: 14px; margin-top: 20px; border: none; border-radius: 12px;
@@ -102,21 +138,16 @@ h1 { font-size: 20px; font-weight: 600; margin-bottom: 16px; text-align: center;
   <div class="section-label">Select account</div>
   <div class="accounts" id="accountList"></div>
 
-  <div class="section-label" style="margin-top:24px">Amount</div>
-  <div class="amount-wrap">
-    <input type="text" class="amount-input" id="amountInput"
-           placeholder="e.g. 50000 or 50k" inputmode="text" autocomplete="off">
-  </div>
-  <div class="hint">Numbers, k (thousands), m (millions)</div>
-
-  <div class="section-label" id="photoLabel" style="margin-top:24px">Check photo</div>
-  <div class="photo-area" id="photoArea">
-    <div class="photo-placeholder">
-      <span class="icon">📷</span>
-      Tap to take or select photo
-    </div>
-  </div>
+  <div class="section-label" id="checksLabel" style="margin-top:24px">Checks</div>
+  <div class="checks-list" id="checksList"></div>
+  <button class="add-check-btn" id="addCheckBtn">+ Add check</button>
+  <div class="hint" id="checksHint">Photo + amount per check. Numbers, k, m</div>
   <input type="file" id="photoInput" accept="image/*" capture="environment" style="display:none">
+
+  <div class="total-bar" id="totalBar">
+    <span class="total-label">Total:</span>
+    <span class="total-value" id="totalValue">0</span>
+  </div>
 
   <div class="error-msg" id="errorMsg"></div>
   <button class="submit-btn" id="submitBtn">📤 SUBMIT DEPOSIT</button>
@@ -141,7 +172,9 @@ var botUsername = '';
 var apiUrl = '';
 var isWebMode = false;
 var fromStartParam = false;
-var selectedPhoto = null;
+
+var checks = []; // [{file, dataUrl, amount_raw, amount_parsed}]
+var activePhotoIdx = -1;
 
 try {
   var params = new URLSearchParams(window.location.search);
@@ -181,16 +214,21 @@ var useSendData = !isWebMode && !fromStartParam && !hasApi && !!tg.initData;
 var listEl = document.getElementById('accountList');
 var emptyEl = document.getElementById('emptyState');
 var contentEl = document.getElementById('content');
-var amountEl = document.getElementById('amountInput');
 var errorEl = document.getElementById('errorMsg');
 var submitBtnEl = document.getElementById('submitBtn');
-var photoArea = document.getElementById('photoArea');
+var checksListEl = document.getElementById('checksList');
+var addCheckBtn = document.getElementById('addCheckBtn');
 var photoInput = document.getElementById('photoInput');
 var overlay = document.getElementById('statusOverlay');
+var totalBar = document.getElementById('totalBar');
+var totalValueEl = document.getElementById('totalValue');
 
 if (!hasApi) {
-  document.getElementById('photoLabel').style.display = 'none';
-  photoArea.style.display = 'none';
+  document.getElementById('checksLabel').style.display = 'none';
+  checksListEl.style.display = 'none';
+  addCheckBtn.style.display = 'none';
+  document.getElementById('checksHint').style.display = 'none';
+  totalBar.style.display = 'none';
 }
 
 if (!accounts.length) {
@@ -206,7 +244,7 @@ if (!accounts.length) {
     card.innerHTML =
       '<div class="acc-icon">🏦</div><div class="acc-info">' +
       '<div class="acc-name">' + escapeHtml(acc.name) + '</div>' +
-      '<div class="acc-limit">' + statusIcon + (limitText ? ' Limit: ' + limitText : '') + '</div></div>';
+      '<div class="acc-limit">' + (limitText ? 'Limit: ' + limitText + ' | ' : '') + 'Status: ' + statusIcon + '</div></div>';
     card.addEventListener('click', function() {
       document.querySelectorAll('.acc-card').forEach(function(c) { c.classList.remove('selected'); });
       card.classList.add('selected');
@@ -216,28 +254,6 @@ if (!accounts.length) {
     listEl.appendChild(card);
   });
 }
-
-photoArea.addEventListener('click', function() { photoInput.click(); });
-photoInput.addEventListener('change', function() {
-  var file = photoInput.files[0];
-  if (!file) return;
-  selectedPhoto = file;
-  var reader = new FileReader();
-  reader.onload = function(e) {
-    photoArea.classList.add('has-photo');
-    photoArea.innerHTML = '<img src="' + e.target.result + '"><button class="photo-remove" id="photoRemoveBtn">✕</button>';
-    document.getElementById('photoRemoveBtn').addEventListener('click', function(ev) {
-      ev.stopPropagation();
-      selectedPhoto = null;
-      photoInput.value = '';
-      photoArea.classList.remove('has-photo');
-      photoArea.innerHTML = '<div class="photo-placeholder"><span class="icon">📷</span>Tap to take or select photo</div>';
-      updateButton();
-    });
-    updateButton();
-  };
-  reader.readAsDataURL(file);
-});
 
 function escapeHtml(t) { var d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
 
@@ -254,12 +270,146 @@ function parseAmount(str) {
   return Math.round(num);
 }
 
+function formatNum(n) {
+  if (n >= 1000000 && n % 1000000 === 0) return (n / 1000000) + 'm';
+  if (n >= 1000 && n % 1000 === 0) return (n / 1000) + 'k';
+  return n.toLocaleString();
+}
+
+function renderChecks() {
+  checksListEl.innerHTML = '';
+  checks.forEach(function(chk, idx) {
+    var entry = document.createElement('div');
+    entry.className = 'check-entry';
+
+    var top = document.createElement('div');
+    top.className = 'check-entry-top';
+    if (chk.dataUrl) {
+      top.innerHTML = '<img src="' + chk.dataUrl + '">' +
+        '<span class="check-num">' + (idx + 1) + '</span>' +
+        '<button class="check-remove" data-idx="' + idx + '">✕</button>';
+    } else {
+      top.innerHTML = '<div class="check-entry-placeholder"><span class="icon">📷</span>Tap to add photo</div>';
+      top.addEventListener('click', function() { activePhotoIdx = idx; photoInput.click(); });
+    }
+    entry.appendChild(top);
+
+    var bottom = document.createElement('div');
+    bottom.className = 'check-entry-bottom';
+    var inp = document.createElement('input');
+    inp.type = 'text'; inp.className = 'check-amount-input';
+    inp.placeholder = 'Amount (50000 / 50k)';
+    inp.inputMode = 'text'; inp.autocomplete = 'off';
+    inp.value = chk.amount_raw || '';
+    inp.dataset.idx = idx;
+    inp.addEventListener('input', function() {
+      var i = parseInt(this.dataset.idx);
+      checks[i].amount_raw = this.value;
+      checks[i].amount_parsed = parseAmount(this.value);
+      var errEl = this.parentElement.querySelector('.check-amount-error');
+      var val = this.value.trim();
+      if (val && !parseAmount(val)) {
+        errEl.textContent = 'Invalid. Use: 50000, 50k, 1.5m';
+        errEl.style.display = 'block';
+      } else {
+        errEl.style.display = 'none';
+      }
+      updateTotal();
+      updateButton();
+    });
+    bottom.appendChild(inp);
+    var errDiv = document.createElement('div');
+    errDiv.className = 'check-amount-error';
+    bottom.appendChild(errDiv);
+    entry.appendChild(bottom);
+
+    checksListEl.appendChild(entry);
+  });
+
+  checksListEl.querySelectorAll('.check-remove').forEach(function(btn) {
+    btn.addEventListener('click', function(ev) {
+      ev.stopPropagation();
+      var i = parseInt(this.dataset.idx);
+      checks.splice(i, 1);
+      renderChecks();
+      updateTotal();
+      updateButton();
+    });
+  });
+
+  checksListEl.querySelectorAll('.check-entry-top img').forEach(function(img) {
+    var entry = img.closest('.check-entry');
+    var idx = Array.from(checksListEl.children).indexOf(entry);
+    img.parentElement.addEventListener('click', function(ev) {
+      if (ev.target.classList.contains('check-remove')) return;
+      activePhotoIdx = idx;
+      photoInput.click();
+    });
+  });
+}
+
+function updateTotal() {
+  var total = 0;
+  var count = 0;
+  checks.forEach(function(chk) {
+    if (chk.amount_parsed && chk.amount_parsed > 0) {
+      total += chk.amount_parsed;
+      count++;
+    }
+  });
+  if (checks.length >= 2) {
+    totalBar.style.display = 'block';
+    totalValueEl.textContent = total > 0 ? formatNum(total) : '0';
+  } else {
+    totalBar.style.display = 'none';
+  }
+}
+
+addCheckBtn.addEventListener('click', function() {
+  checks.push({ file: null, dataUrl: null, amount_raw: '', amount_parsed: null });
+  renderChecks();
+  updateButton();
+  var lastEntry = checksListEl.lastElementChild;
+  if (lastEntry) {
+    activePhotoIdx = checks.length - 1;
+    photoInput.click();
+  }
+});
+
+photoInput.addEventListener('change', function() {
+  var file = photoInput.files[0];
+  if (!file || activePhotoIdx < 0 || activePhotoIdx >= checks.length) return;
+  var idx = activePhotoIdx;
+  checks[idx].file = file;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    checks[idx].dataUrl = e.target.result;
+    renderChecks();
+    updateButton();
+  };
+  reader.readAsDataURL(file);
+  photoInput.value = '';
+});
+
 function updateButton() {
-  var val = amountEl.value.trim();
-  var amountParsed = parseAmount(val);
-  var amountOk = amountParsed && amountParsed > 0;
-  var ready = selectedAccId !== null && amountOk;
-  if (hasApi) ready = ready && selectedPhoto;
+  errorEl.style.display = 'none';
+
+  if (hasApi) {
+    var allValid = checks.length > 0;
+    checks.forEach(function(chk) {
+      if (!chk.file || !chk.amount_parsed || chk.amount_parsed <= 0) allValid = false;
+    });
+    var ready = selectedAccId !== null && allValid;
+    if (ready) {
+      submitBtnEl.style.display = 'block';
+      submitBtnEl.disabled = false;
+    } else {
+      submitBtnEl.style.display = 'none';
+    }
+    return;
+  }
+
+  var ready = selectedAccId !== null;
   if (ready) {
     if (useSendData) {
       tg.MainButton.setText('SUBMIT DEPOSIT');
@@ -275,20 +425,6 @@ function updateButton() {
   }
 }
 
-amountEl.addEventListener('input', function() {
-  var val = amountEl.value.trim();
-  if (val && !parseAmount(val)) {
-    errorEl.textContent = 'Invalid amount. Use numbers: 50000, 50k, 1.5m';
-    errorEl.style.display = 'block';
-  } else if (val && parseAmount(val) === 0) {
-    errorEl.textContent = 'Amount must be greater than 0';
-    errorEl.style.display = 'block';
-  } else {
-    errorEl.style.display = 'none';
-  }
-  updateButton();
-});
-
 function showStatus(text, icon) {
   overlay.classList.add('visible');
   document.getElementById('statusText').textContent = text;
@@ -296,6 +432,9 @@ function showStatus(text, icon) {
     document.getElementById('statusSpinner').style.display = 'none';
     document.getElementById('statusIcon').style.display = 'block';
     document.getElementById('statusIcon').textContent = icon;
+  } else {
+    document.getElementById('statusSpinner').style.display = 'block';
+    document.getElementById('statusIcon').style.display = 'none';
   }
 }
 
@@ -305,63 +444,64 @@ async function handleSubmit() {
     errorEl.style.display = 'block';
     return;
   }
-  var amountRaw = amountEl.value.trim();
-  var amount = parseAmount(amountRaw);
 
-  if (!amount || amount <= 0) {
-    errorEl.textContent = 'Enter amount. Example: 50000, 50k, 1.5m';
-    errorEl.style.display = 'block';
-    return;
-  }
+  if (hasApi && checks.length > 0) {
+    for (var v = 0; v < checks.length; v++) {
+      if (!checks[v].file) {
+        errorEl.textContent = 'Check #' + (v + 1) + ': add photo';
+        errorEl.style.display = 'block';
+        return;
+      }
+      if (!checks[v].amount_parsed || checks[v].amount_parsed <= 0) {
+        errorEl.textContent = 'Check #' + (v + 1) + ': enter amount';
+        errorEl.style.display = 'block';
+        return;
+      }
+    }
 
-  if (hasApi && selectedPhoto) {
     submitBtnEl.disabled = true;
-    showStatus('Sending deposit...');
-    try {
-      var fd = new FormData();
-      fd.append('photo', selectedPhoto);
-      fd.append('account_id', selectedAccId);
-      if (amount && amount > 0) {
-        fd.append('amount', String(amount));
-        fd.append('amount_display', amountRaw);
-      }
-      fd.append('init_data', tg.initData || '');
+    var total = checks.length;
+    var ok = 0;
+    var fail = 0;
 
-      var resp = await fetch(apiUrl + '/api/deposit', { method: 'POST', body: fd });
-      var result = await resp.json();
-      if (result.ok) {
-        showStatus('Deposit sent!', '✅');
-        setTimeout(function() { try { tg.close(); } catch(e) {} }, 1500);
-      } else {
-        showStatus('Error: ' + (result.error || 'Unknown'), '❌');
-        setTimeout(function() {
-          overlay.classList.remove('visible');
-          document.getElementById('statusSpinner').style.display = 'block';
-          document.getElementById('statusIcon').style.display = 'none';
-          submitBtnEl.disabled = false;
-        }, 2500);
+    for (var s = 0; s < checks.length; s++) {
+      showStatus('Sending ' + (s + 1) + '/' + total + '...');
+      try {
+        var fd = new FormData();
+        fd.append('photo', checks[s].file);
+        fd.append('account_id', selectedAccId);
+        fd.append('amount', String(checks[s].amount_parsed));
+        fd.append('amount_display', checks[s].amount_raw);
+        fd.append('init_data', tg.initData || '');
+
+        var resp = await fetch(apiUrl + '/api/deposit', { method: 'POST', body: fd });
+        var result = await resp.json();
+        if (result.ok) ok++; else fail++;
+      } catch(e) {
+        fail++;
       }
-    } catch(e) {
-      showStatus('Network error', '❌');
+    }
+
+    if (fail === 0) {
+      showStatus(total > 1 ? 'All ' + total + ' checks sent!' : 'Deposit sent!', '✅');
+      setTimeout(function() { try { tg.close(); } catch(e) {} }, 1500);
+    } else {
+      showStatus(ok + '/' + total + ' sent, ' + fail + ' failed', '⚠️');
       setTimeout(function() {
         overlay.classList.remove('visible');
-        document.getElementById('statusSpinner').style.display = 'block';
-        document.getElementById('statusIcon').style.display = 'none';
         submitBtnEl.disabled = false;
-      }, 2500);
+      }, 3000);
     }
     return;
   }
 
   if (useSendData) {
     var data = { account_id: selectedAccId };
-    if (amount && amount > 0) { data.amount = amount; data.amount_display = amountRaw; }
     tg.sendData(JSON.stringify(data));
     return;
   }
 
   var startParam = 'dep_' + selectedAccId;
-  if (amount && amount > 0) startParam += '_' + amount;
   var url = 'https://t.me/' + botUsername + '?start=' + startParam;
   try { tg.openTelegramLink(url); } catch(e) { window.location.href = url; }
 }
