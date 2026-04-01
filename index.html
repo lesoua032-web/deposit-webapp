@@ -19,23 +19,45 @@ h1 { font-size: 20px; font-weight: 600; margin-bottom: 16px; text-align: center;
   font-size: 13px; font-weight: 600; text-transform: uppercase;
   color: var(--tg-theme-hint-color, #999); margin: 20px 0 8px; padding-left: 4px;
 }
-.trader-group { margin-bottom: 12px; }
+.trader-group { margin-bottom: 10px; }
 .trader-header {
   font-size: 13px; font-weight: 600; padding: 6px 4px;
   color: var(--tg-theme-hint-color, #999);
 }
-.accounts { display: flex; flex-direction: column; gap: 6px; }
-.acc-card {
+.acc-table {
+  width: 100%; border-collapse: collapse;
   background: var(--tg-theme-secondary-bg-color, #2a2a4a);
-  border: 2px solid transparent; border-radius: 12px; padding: 12px 14px;
-  cursor: pointer; transition: border-color 0.15s, transform 0.1s;
-  display: flex; align-items: center; gap: 10px;
+  border-radius: 10px; overflow: hidden;
 }
-.acc-card:active { transform: scale(0.98); }
-.acc-card.selected { border-color: var(--tg-theme-button-color, #3390ec); }
-.acc-info { flex: 1; min-width: 0; }
-.acc-name { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.acc-detail { font-size: 12px; color: var(--tg-theme-hint-color, #999); margin-top: 2px; }
+.acc-table th {
+  padding: 8px 12px; font-size: 11px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.5px;
+  color: var(--tg-theme-hint-color, #888);
+  text-align: left; border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.acc-table th:nth-child(2),
+.acc-table th:nth-child(3) { text-align: center; }
+.acc-table td {
+  padding: 11px 12px; font-size: 14px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  vertical-align: middle;
+}
+.acc-table tr:last-child td { border-bottom: none; }
+.acc-table tbody tr { cursor: pointer; transition: background 0.12s; }
+.acc-table tbody tr:active { background: rgba(255,255,255,0.03); }
+.acc-table tbody tr.selected { background: rgba(51,144,236,0.1); }
+.acc-table tbody tr.selected td:first-child {
+  box-shadow: inset 3px 0 0 var(--tg-theme-button-color, #3390ec);
+}
+.acc-table .td-name {
+  font-weight: 500; white-space: nowrap; overflow: hidden;
+  text-overflow: ellipsis; max-width: 160px;
+}
+.acc-table .td-limit {
+  text-align: center; font-weight: 600; font-size: 13px;
+  color: var(--tg-theme-text-color, #eee);
+}
+.acc-table .td-status { text-align: center; font-size: 13px; }
 .amount-wrap { position: relative; margin-top: 8px; }
 .amount-input {
   width: 100%; padding: 14px 16px;
@@ -235,27 +257,29 @@ if (!accounts.length) {
     header.textContent = '👨‍💻 Trader #' + tNum + ' (' + accs.length + ')';
     if (tNum == 0) header.textContent = '📋 Unassigned (' + accs.length + ')';
     group.appendChild(header);
-    var list = document.createElement('div');
-    list.className = 'accounts';
+    var table = document.createElement('table');
+    table.className = 'acc-table';
+    table.innerHTML = '<thead><tr><th>Account</th><th>Limit</th><th>Sts</th></tr></thead>';
+    var tbody = document.createElement('tbody');
     accs.forEach(function(acc) {
-      var card = document.createElement('div');
-      card.className = 'acc-card';
-      card.dataset.id = acc.id;
-      var limitText = acc.limit ? (acc.limit >= 1000 ? Math.round(acc.limit/1000) + 'k' : acc.limit) : '0';
+      var row = document.createElement('tr');
+      row.dataset.id = acc.id;
+      var limitText = acc.limit ? (acc.limit >= 1000 ? Math.round(acc.limit/1000) + 'k' : acc.limit) : '—';
       var statusIcon = acc.status === 'Active' ? '✅' : '⛔';
-      card.innerHTML =
-        '<div class="acc-info">' +
-        '<div class="acc-name">' + escapeHtml(acc.name) + '</div>' +
-        '<div class="acc-detail">' + limitText + ' — ' + statusIcon + '</div></div>';
-      card.addEventListener('click', function() {
-        listEl.querySelectorAll('.acc-card').forEach(function(c) { c.classList.remove('selected'); });
-        card.classList.add('selected');
+      row.innerHTML =
+        '<td class="td-name">' + escapeHtml(acc.name) + '</td>' +
+        '<td class="td-limit">' + limitText + '</td>' +
+        '<td class="td-status">' + statusIcon + '</td>';
+      row.addEventListener('click', function() {
+        listEl.querySelectorAll('tr').forEach(function(r) { r.classList.remove('selected'); });
+        row.classList.add('selected');
         selectedAccId = acc.id;
         updateButton();
       });
-      list.appendChild(card);
+      tbody.appendChild(row);
     });
-    group.appendChild(list);
+    table.appendChild(tbody);
+    group.appendChild(table);
     listEl.appendChild(group);
   });
 }
