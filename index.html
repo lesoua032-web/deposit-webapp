@@ -257,7 +257,8 @@ tg.ready();
 tg.expand();
 
 (function checkViewMode() {
-  var photoUrls = [];
+  var viewApi = '';
+  var fileIds = [];
 
   if (tg.initDataUnsafe && tg.initDataUnsafe.start_param) {
     try {
@@ -265,22 +266,15 @@ tg.expand();
       while (sp.length % 4) sp += '=';
       var decoded = atob(sp.replace(/-/g, '+').replace(/_/g, '/'));
       var segments = decoded.split('|');
-      var token = '';
-      var paths = [];
       for (var i = 0; i < segments.length; i++) {
         var seg = segments[i];
-        if (seg.indexOf('t:') === 0) { token = seg.substring(2); }
-        else if (seg.indexOf('p:') === 0) { paths.push(seg.substring(2)); }
-      }
-      if (token && paths.length) {
-        for (var j = 0; j < paths.length; j++) {
-          photoUrls.push('https://api.telegram.org/file/bot' + token + '/' + paths[j]);
-        }
+        if (seg.indexOf('a:') === 0) viewApi = seg.substring(2);
+        else if (seg.indexOf('f:') === 0) fileIds.push(seg.substring(2));
       }
     } catch(e) { console.error('startapp parse error', e); }
   }
 
-  if (!photoUrls.length) return false;
+  if (!fileIds.length) return false;
 
   document.getElementById('content').style.display = 'none';
   document.getElementById('emptyState').style.display = 'none';
@@ -289,7 +283,7 @@ tg.expand();
   document.querySelector('h1').textContent = '📋 Check';
 
   var header = document.getElementById('viewerHeader');
-  header.textContent = photoUrls.length > 1 ? 'Check photos' : 'Check photo';
+  header.textContent = fileIds.length > 1 ? 'Check photos' : 'Check photo';
   var counter = document.getElementById('viewerCounter');
   var gallery = document.getElementById('viewerGallery');
   var loading = document.getElementById('viewerLoading');
@@ -300,44 +294,53 @@ tg.expand();
 
   fullscreen.addEventListener('click', function() { fullscreen.classList.remove('active'); });
 
-  photoUrls.forEach(function(imgUrl, idx) {
+  fileIds.forEach(function(fid, idx) {
+    var imgUrl = viewApi + '/api/check-photo?file_id=' + encodeURIComponent(fid);
     var imgWrap = document.createElement('div');
     imgWrap.className = 'viewer-img-wrap';
     var img = new Image();
     img.className = 'viewer-img';
     img.alt = 'Check ' + (idx + 1);
-    img.onload = function() {
-      loaded++;
-      if (loaded + errors === photoUrls.length) {
-        loading.style.display = 'none';
-        if (photoUrls.length > 1) counter.textContent = loaded + ' of ' + photoUrls.length + ' photos';
-      }
-    };
-    img.onerror = function() {
-      errors++;
-      imgWrap.style.display = 'none';
-      if (loaded + errors === photoUrls.length) {
-        loading.style.display = 'none';
-        if (errors === photoUrls.length) {
-          gallery.innerHTML = '<div class="viewer-error">Failed to load check photos</div>';
-        } else if (photoUrls.length > 1) {
-          counter.textContent = loaded + ' of ' + photoUrls.length + ' photos';
-        }
-      }
-    };
     img.addEventListener('click', function() {
       fullImg.src = this.src;
       fullscreen.classList.add('active');
     });
     imgWrap.appendChild(img);
-    if (photoUrls.length > 1) {
+    if (fileIds.length > 1) {
       var num = document.createElement('span');
       num.className = 'viewer-img-num';
-      num.textContent = (idx + 1) + '/' + photoUrls.length;
+      num.textContent = (idx + 1) + '/' + fileIds.length;
       imgWrap.appendChild(num);
     }
     gallery.appendChild(imgWrap);
-    img.src = imgUrl;
+
+    fetch(imgUrl, {
+      headers: { 'ngrok-skip-browser-warning': '1' },
+    })
+    .then(function(resp) {
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      var ct = resp.headers.get('content-type') || '';
+      if (ct.indexOf('text/html') !== -1) throw new Error('Got HTML instead of image');
+      return resp.blob();
+    })
+    .then(function(blob) {
+      img.src = URL.createObjectURL(blob);
+      loaded++;
+      if (loaded + errors === fileIds.length) {
+        loading.style.display = 'none';
+        if (fileIds.length > 1) counter.textContent = loaded + ' of ' + fileIds.length + ' photos';
+      }
+    })
+    .catch(function(err) {
+      errors++;
+      imgWrap.style.display = 'none';
+      if (loaded + errors === fileIds.length) {
+        loading.style.display = 'none';
+        if (errors === fileIds.length) {
+          gallery.innerHTML = '<div class="viewer-error">API: ' + viewApi + '<br>Error: ' + err.message + '</div>';
+        }
+      }
+    });
   });
   return true;
 })();
