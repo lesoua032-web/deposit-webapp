@@ -239,47 +239,73 @@ h1 { font-size: 20px; font-weight: 600; margin-bottom: 16px; text-align: center;
 .viewer-check-status.pending { background: rgba(255,193,7,0.15); color: #ffc107; }
 .viewer-check-status.received { background: rgba(76,175,80,0.15); color: #4caf50; }
 
-.co-row {
-  display: flex; align-items: center;
-  padding: 11px 16px; gap: 10px;
+.co-check {
+  padding: 14px 16px;
   border-top: 1px solid rgba(255,255,255,0.06);
 }
-.co-row-name { font-size: 14px; font-weight: 500; }
-.co-row-icon { font-size: 14px; }
-.co-row-spacer { flex: 1; }
-.co-row-amt { font-size: 15px; font-weight: 600; }
-.co-row-amt.empty { color: var(--tg-theme-hint-color, #666); font-weight: 400; }
-.co-row-edit {
+.co-check-top {
+  display: flex; align-items: center; gap: 10px;
+}
+.co-check-status {
+  width: 28px; height: 28px; border-radius: 50%; border: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; transition: all 0.15s; flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+.co-check-status.not-received {
+  background: rgba(255,193,7,0.15); color: #ffc107;
+}
+.co-check-status.received {
+  background: rgba(76,175,80,0.15); color: #4caf50;
+}
+.co-check-name {
+  font-size: 14px; font-weight: 500; white-space: nowrap;
+}
+.co-check-spacer { flex: 1; }
+.co-check-amt {
+  font-size: 15px; font-weight: 600;
+  min-width: 40px; text-align: right;
+}
+.co-check-amt.empty {
+  color: var(--tg-theme-hint-color, #666); font-weight: 400;
+}
+.co-check-edit {
   background: none; border: none; cursor: pointer;
-  color: var(--tg-theme-button-color, #3390ec); font-size: 13px; font-weight: 600;
-  padding: 2px 6px;
+  color: var(--tg-theme-button-color, #3390ec);
+  font-size: 18px; padding: 0 2px; line-height: 1;
+  -webkit-tap-highlight-color: transparent;
 }
-.co-row-input {
-  display: none; flex: 1; gap: 8px; align-items: center;
+.co-check-edit-row {
+  display: none; margin-top: 10px;
+  gap: 8px; align-items: center;
 }
-.co-row.editing .co-row-amt,
-.co-row.editing .co-row-edit,
-.co-row.editing .co-row-spacer { display: none; }
-.co-row.editing .co-row-input { display: flex; }
-.co-row-input input {
+.co-check.editing .co-check-edit-row { display: flex; }
+.co-check.editing .co-check-edit { display: none; }
+.co-check-edit-row input {
   flex: 1; min-width: 0; padding: 10px 14px;
   border: 2px solid var(--tg-theme-secondary-bg-color, #2a2a4a); border-radius: 10px;
   background: var(--tg-theme-secondary-bg-color, #2a2a4a);
   color: var(--tg-theme-text-color, #eee); font-size: 15px; font-weight: 500;
   outline: none; transition: border-color 0.15s;
 }
-.co-row-input input:focus { border-color: var(--tg-theme-button-color, #3390ec); }
-.co-row-input input::placeholder { color: var(--tg-theme-hint-color, #666); font-weight: 400; }
-.co-row-input button {
+.co-check-edit-row input:focus {
+  border-color: var(--tg-theme-button-color, #3390ec);
+}
+.co-check-edit-row input::placeholder {
+  color: var(--tg-theme-hint-color, #666); font-weight: 400;
+}
+.co-check-edit-row button {
   background: var(--tg-theme-button-color, #3390ec);
   color: var(--tg-theme-button-text-color, #fff);
   border: none; border-radius: 10px; padding: 10px 16px;
   font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap;
 }
-.co-row-input button:active { opacity: 0.8; }
+.co-check-edit-row button:active { opacity: 0.8; }
+
 .co-total {
   display: flex; align-items: center; padding: 14px 16px;
-  border-top: 2px solid rgba(255,255,255,0.08);
+  border-top: 2px solid rgba(255,255,255,0.10);
+  background: rgba(255,255,255,0.02);
 }
 .co-total-label {
   font-size: 13px; font-weight: 700; text-transform: uppercase;
@@ -621,6 +647,13 @@ tg.expand();
     footerEl.style.display = 'none';
 
     var totalValEl = document.createElement('span');
+    var singleCheck = (fileIds.length === 1);
+    var coCheckStatuses = [];
+
+    var initPerCheck = 0;
+    if (startTotal && fileIds.length === 1) {
+      initPerCheck = parseAmount(startTotal);
+    }
 
     function recalcCompanyTotal() {
       var sum = 0;
@@ -634,49 +667,76 @@ tg.expand();
     }
 
     fileIds.forEach(function(fid, idx) {
-      companyCheckAmounts.push('');
-      var row = document.createElement('div');
-      row.className = 'co-row';
+      var initAmt = '';
+      if (singleCheck && initPerCheck > 0) {
+        initAmt = formatAmount(initPerCheck);
+      }
+      companyCheckAmounts.push(initAmt);
+      coCheckStatuses.push('not-received');
+
+      var card = document.createElement('div');
+      card.className = 'co-check';
+
+      var topRow = document.createElement('div');
+      topRow.className = 'co-check-top';
+
+      var statusBtn = document.createElement('button');
+      statusBtn.className = 'co-check-status not-received';
+      statusBtn.textContent = '⏳';
+      statusBtn.addEventListener('click', function() {
+        if (coCheckStatuses[idx] === 'not-received') {
+          coCheckStatuses[idx] = 'received';
+          statusBtn.className = 'co-check-status received';
+          statusBtn.textContent = '✅';
+        } else {
+          coCheckStatuses[idx] = 'not-received';
+          statusBtn.className = 'co-check-status not-received';
+          statusBtn.textContent = '⏳';
+        }
+      });
 
       var nameEl = document.createElement('span');
-      nameEl.className = 'co-row-name';
-      nameEl.textContent = 'Check ' + (idx + 1);
-
-      var iconEl = document.createElement('span');
-      iconEl.className = 'co-row-icon';
-      iconEl.textContent = '✅';
+      nameEl.className = 'co-check-name';
+      nameEl.textContent = singleCheck ? 'Check' : 'Check ' + (idx + 1);
 
       var spacer = document.createElement('span');
-      spacer.className = 'co-row-spacer';
+      spacer.className = 'co-check-spacer';
 
       var amtEl = document.createElement('span');
-      amtEl.className = 'co-row-amt empty';
-      amtEl.textContent = '—';
+      if (initAmt) {
+        amtEl.className = 'co-check-amt';
+        amtEl.textContent = initAmt;
+      } else {
+        amtEl.className = 'co-check-amt empty';
+        amtEl.textContent = '—';
+      }
 
       var editBtn = document.createElement('button');
-      editBtn.className = 'co-row-edit';
-      editBtn.textContent = 'edit';
+      editBtn.className = 'co-check-edit';
+      editBtn.textContent = '✏️';
 
-      var inputWrap = document.createElement('div');
-      inputWrap.className = 'co-row-input';
+      topRow.appendChild(statusBtn);
+      topRow.appendChild(nameEl);
+      topRow.appendChild(spacer);
+      topRow.appendChild(amtEl);
+      topRow.appendChild(editBtn);
+
+      var editRow = document.createElement('div');
+      editRow.className = 'co-check-edit-row';
       var inp = document.createElement('input');
       inp.type = 'text'; inp.inputMode = 'text'; inp.autocomplete = 'off';
-      inp.placeholder = 'e.g. 50k';
+      inp.placeholder = 'Amount, e.g. 50k';
       var saveBtn = document.createElement('button');
       saveBtn.textContent = 'Save';
-      inputWrap.appendChild(inp);
-      inputWrap.appendChild(saveBtn);
+      editRow.appendChild(inp);
+      editRow.appendChild(saveBtn);
 
-      row.appendChild(nameEl);
-      row.appendChild(iconEl);
-      row.appendChild(spacer);
-      row.appendChild(amtEl);
-      row.appendChild(editBtn);
-      row.appendChild(inputWrap);
-      togglesContainer.appendChild(row);
+      card.appendChild(topRow);
+      card.appendChild(editRow);
+      togglesContainer.appendChild(card);
 
       editBtn.addEventListener('click', function() {
-        row.classList.add('editing');
+        card.classList.add('editing');
         inp.value = companyCheckAmounts[idx] || '';
         inp.focus();
       });
@@ -686,8 +746,8 @@ tg.expand();
         companyCheckAmounts[idx] = v;
         var n = parseAmount(v);
         amtEl.textContent = n > 0 ? formatAmount(n) : '—';
-        amtEl.className = n > 0 ? 'co-row-amt' : 'co-row-amt empty';
-        row.classList.remove('editing');
+        amtEl.className = n > 0 ? 'co-check-amt' : 'co-check-amt empty';
+        card.classList.remove('editing');
         recalcCompanyTotal();
       }
       saveBtn.addEventListener('click', commit);
@@ -702,11 +762,11 @@ tg.expand();
     var totalSpacer = document.createElement('span');
     totalSpacer.className = 'co-total-spacer';
     if (startTotal) {
-      var n = parseAmount(startTotal);
-      if (n > 0) {
+      var sn = parseAmount(startTotal);
+      if (sn > 0) {
         totalValEl.className = 'co-total-value';
-        totalValEl.textContent = formatAmount(n);
-        currentTotal = formatAmount(n);
+        totalValEl.textContent = formatAmount(sn);
+        currentTotal = formatAmount(sn);
       } else {
         totalValEl.className = 'co-total-value empty';
         totalValEl.textContent = '—';
