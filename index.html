@@ -231,19 +231,13 @@ h1 { font-size: 20px; font-weight: 600; margin-bottom: 16px; text-align: center;
   -webkit-tap-highlight-color: transparent;
 }
 .viewer-check-toggle:active { background: rgba(255,255,255,0.03); }
-.viewer-check-label {
-  font-size: 14px; font-weight: 500;
-}
+.viewer-check-label { font-size: 14px; font-weight: 500; }
 .viewer-check-status {
   font-size: 13px; padding: 4px 12px; border-radius: 20px; font-weight: 600;
   transition: all 0.15s;
 }
-.viewer-check-status.pending {
-  background: rgba(255,193,7,0.15); color: #ffc107;
-}
-.viewer-check-status.received {
-  background: rgba(76,175,80,0.15); color: #4caf50;
-}
+.viewer-check-status.pending { background: rgba(255,193,7,0.15); color: #ffc107; }
+.viewer-check-status.received { background: rgba(76,175,80,0.15); color: #4caf50; }
 
 .viewer-footer {
   background: var(--tg-theme-secondary-bg-color, #2a2a4a);
@@ -351,7 +345,7 @@ h1 { font-size: 20px; font-weight: 600; margin-bottom: 16px; text-align: center;
     <div class="viewer-counter" id="viewerCounter"></div>
   </div>
   <div class="viewer-footer" id="viewerFooter" style="display:none">
-    <div class="viewer-footer-row">
+    <div class="viewer-footer-row" id="viewerChecksRow" style="display:none">
       <span class="viewer-footer-label">Checks</span>
       <span class="viewer-footer-value" id="viewerChecksCount">0/0 received</span>
     </div>
@@ -391,6 +385,7 @@ tg.expand();
   var fileIds = [];
   var companyMsgId = '';
   var startTotal = '';
+  var viewRole = 't';
 
   if (tg.initDataUnsafe && tg.initDataUnsafe.start_param) {
     try {
@@ -403,6 +398,7 @@ tg.expand();
         if (seg.indexOf('a:') === 0) viewApi = seg.substring(2);
         else if (seg.indexOf('m:') === 0) companyMsgId = seg.substring(2);
         else if (seg.indexOf('t:') === 0) startTotal = seg.substring(2);
+        else if (seg.indexOf('r:') === 0) viewRole = seg.substring(2);
         else if (seg.indexOf('f:') === 0) fileIds.push(seg.substring(2));
       }
     } catch(e) { console.error('startapp parse error', e); }
@@ -421,17 +417,12 @@ tg.expand();
   var counter = document.getElementById('viewerCounter');
   var gallery = document.getElementById('viewerGallery');
   var loading = document.getElementById('viewerLoading');
-  var togglesContainer = document.getElementById('viewerToggles');
   var fullscreen = document.getElementById('viewerFullscreen');
   var fullImg = document.getElementById('viewerFullImg');
   var loaded = 0;
   var errors = 0;
 
-  var checkStatuses = [];
-  for (var s = 0; s < fileIds.length; s++) checkStatuses.push('pending');
-
   var footerEl = document.getElementById('viewerFooter');
-  var checksCountEl = document.getElementById('viewerChecksCount');
   var totalValueEl = document.getElementById('viewerTotalValue');
   var totalDisplayEl = document.getElementById('viewerTotalDisplay');
   var totalInputWrapEl = document.getElementById('viewerTotalInputWrap');
@@ -444,6 +435,14 @@ tg.expand();
   var originalTotal = startTotal;
   var currentTotal = startTotal;
   var isSaving = false;
+  var isTrader = (viewRole === 't');
+
+  var checkStatuses = [];
+  for (var s = 0; s < fileIds.length; s++) checkStatuses.push('pending');
+
+  var togglesContainer = document.getElementById('viewerToggles');
+  var checksRowEl = document.getElementById('viewerChecksRow');
+  var checksCountEl = document.getElementById('viewerChecksCount');
 
   function updateChecksUI() {
     var received = 0;
@@ -475,9 +474,11 @@ tg.expand();
     isSaving = true;
     savingEl.style.display = 'block';
     var body = {
-      company_msg_id: parseInt(companyMsgId),
-      check_statuses: checkStatuses
+      company_msg_id: parseInt(companyMsgId)
     };
+    if (isTrader) {
+      body.check_statuses = checkStatuses;
+    }
     var adj = parseAmount(currentTotal);
     if (currentTotal && adj > 0 && currentTotal !== originalTotal) {
       body.adjusted_total = adj;
@@ -504,7 +505,6 @@ tg.expand();
   }
 
   footerEl.style.display = 'block';
-  updateChecksUI();
   if (startTotal) {
     var n = parseAmount(startTotal);
     totalValueEl.textContent = n > 0 ? formatAmount(n) : startTotal;
@@ -512,32 +512,36 @@ tg.expand();
     totalValueEl.textContent = '—';
   }
 
-  fileIds.forEach(function(fid, idx) {
-    var row = document.createElement('div');
-    row.className = 'viewer-check-toggle';
-    var label = document.createElement('span');
-    label.className = 'viewer-check-label';
-    label.textContent = '📷 Check ' + (idx + 1);
-    var badge = document.createElement('span');
-    badge.className = 'viewer-check-status pending';
-    badge.textContent = '⏳ Pending';
-    row.appendChild(label);
-    row.appendChild(badge);
-    row.addEventListener('click', function() {
-      if (checkStatuses[idx] === 'pending') {
-        checkStatuses[idx] = 'received';
-        badge.className = 'viewer-check-status received';
-        badge.textContent = '✅ Received';
-      } else {
-        checkStatuses[idx] = 'pending';
-        badge.className = 'viewer-check-status pending';
-        badge.textContent = '⏳ Pending';
-      }
-      updateChecksUI();
-      sendUpdate();
+  if (isTrader) {
+    checksRowEl.style.display = 'flex';
+    updateChecksUI();
+    fileIds.forEach(function(fid, idx) {
+      var row = document.createElement('div');
+      row.className = 'viewer-check-toggle';
+      var label = document.createElement('span');
+      label.className = 'viewer-check-label';
+      label.textContent = '📷 Check ' + (idx + 1);
+      var badge = document.createElement('span');
+      badge.className = 'viewer-check-status pending';
+      badge.textContent = '⏳ Pending';
+      row.appendChild(label);
+      row.appendChild(badge);
+      row.addEventListener('click', function() {
+        if (checkStatuses[idx] === 'pending') {
+          checkStatuses[idx] = 'received';
+          badge.className = 'viewer-check-status received';
+          badge.textContent = '✅ Received';
+        } else {
+          checkStatuses[idx] = 'pending';
+          badge.className = 'viewer-check-status pending';
+          badge.textContent = '⏳ Pending';
+        }
+        updateChecksUI();
+        sendUpdate();
+      });
+      togglesContainer.appendChild(row);
     });
-    togglesContainer.appendChild(row);
-  });
+  }
 
   editBtnEl.addEventListener('click', function() {
     totalDisplayEl.style.display = 'none';
