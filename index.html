@@ -3,7 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Deposit</title>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<title>Deposit / Check Viewer</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -135,6 +137,31 @@ h1 { font-size: 20px; font-weight: 600; margin-bottom: 16px; text-align: center;
 @keyframes spin { to { transform: rotate(360deg); } }
 .status-text { font-size: 16px; font-weight: 500; }
 .status-icon { font-size: 48px; }
+
+.viewer-wrap {
+  display: none; flex-direction: column; align-items: center;
+  gap: 12px; padding: 8px 0;
+}
+.viewer-wrap.active { display: flex; }
+.viewer-title { font-size: 18px; font-weight: 600; margin-bottom: 4px; }
+.viewer-gallery { width: 100%; display: flex; flex-direction: column; gap: 10px; align-items: center; }
+.viewer-img {
+  width: 100%; max-width: 500px; border-radius: 12px;
+  background: var(--tg-theme-secondary-bg-color, #2a2a4a);
+  cursor: zoom-in; transition: transform 0.2s;
+}
+.viewer-img.zoomed { transform: scale(1.8); cursor: zoom-out; z-index: 50; position: relative; }
+.viewer-loading {
+  padding: 40px; text-align: center;
+  color: var(--tg-theme-hint-color, #999); font-size: 15px;
+}
+.viewer-error {
+  padding: 20px; text-align: center;
+  color: #e53935; font-size: 14px;
+}
+.viewer-counter {
+  font-size: 13px; color: var(--tg-theme-hint-color, #999);
+}
 </style>
 </head>
 <body>
@@ -167,6 +194,14 @@ h1 { font-size: 20px; font-weight: 600; margin-bottom: 16px; text-align: center;
 
 <div class="empty-state" id="emptyState" style="display:none">No active accounts available</div>
 
+<div class="viewer-wrap" id="viewerWrap">
+  <div class="viewer-title">📋 Check Photos</div>
+  <div class="viewer-counter" id="viewerCounter"></div>
+  <div class="viewer-gallery" id="viewerGallery">
+    <div class="viewer-loading" id="viewerLoading">Loading photos...</div>
+  </div>
+</div>
+
 <div class="status-overlay" id="statusOverlay">
   <div class="spinner" id="statusSpinner"></div>
   <div class="status-icon" id="statusIcon" style="display:none"></div>
@@ -177,6 +212,54 @@ h1 { font-size: 20px; font-weight: 600; margin-bottom: 16px; text-align: center;
 var tg = window.Telegram.WebApp;
 tg.ready();
 tg.expand();
+
+(function checkViewMode() {
+  var params = new URLSearchParams(window.location.search);
+  var fileIdsRaw = params.get('file_ids');
+  var viewApi = params.get('api') || '';
+  if (!fileIdsRaw) return;
+
+  document.getElementById('content').style.display = 'none';
+  document.getElementById('emptyState').style.display = 'none';
+  var wrap = document.getElementById('viewerWrap');
+  wrap.classList.add('active');
+  document.querySelector('h1').textContent = '📋 Check';
+
+  var fileIds = fileIdsRaw.split(',').filter(Boolean);
+  var counter = document.getElementById('viewerCounter');
+  if (fileIds.length > 1) counter.textContent = fileIds.length + ' photos';
+
+  var gallery = document.getElementById('viewerGallery');
+  var loading = document.getElementById('viewerLoading');
+  var loaded = 0;
+  var errors = 0;
+
+  fileIds.forEach(function(fid, idx) {
+    var url = viewApi + '/api/check-photo?file_id=' + encodeURIComponent(fid) +
+              '&init_data=' + encodeURIComponent(tg.initData || '');
+    var img = new Image();
+    img.className = 'viewer-img';
+    img.alt = 'Check ' + (idx + 1);
+    img.onload = function() {
+      loaded++;
+      if (loaded + errors === fileIds.length) loading.style.display = 'none';
+    };
+    img.onerror = function() {
+      errors++;
+      img.style.display = 'none';
+      if (loaded + errors === fileIds.length) {
+        loading.style.display = 'none';
+        if (errors === fileIds.length) {
+          gallery.innerHTML = '<div class="viewer-error">Failed to load photos</div>';
+        }
+      }
+    };
+    img.addEventListener('click', function() { this.classList.toggle('zoomed'); });
+    img.src = url;
+    gallery.appendChild(img);
+  });
+  return true;
+})();
 
 var selectedAccId = null;
 var accounts = [];
