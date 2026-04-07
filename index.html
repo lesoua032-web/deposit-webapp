@@ -239,6 +239,22 @@ h1 { font-size: 20px; font-weight: 600; margin-bottom: 16px; text-align: center;
 .viewer-check-status.pending { background: rgba(255,193,7,0.15); color: #ffc107; }
 .viewer-check-status.received { background: rgba(76,175,80,0.15); color: #4caf50; }
 
+.company-check-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 16px;
+  border-top: 1px solid rgba(255,255,255,0.06);
+}
+.company-check-label { font-size: 14px; font-weight: 500; white-space: nowrap; }
+.company-check-input {
+  flex: 1; min-width: 0;
+  padding: 6px 10px; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px;
+  background: var(--tg-theme-bg-color, #1a1a2e);
+  color: var(--tg-theme-text-color, #eee); font-size: 14px; font-weight: 500;
+  outline: none; text-align: right;
+}
+.company-check-input:focus { border-color: var(--tg-theme-button-color, #3390ec); }
+.company-check-input::placeholder { color: var(--tg-theme-hint-color, #888); font-weight: 400; }
+
 .viewer-footer {
   background: var(--tg-theme-secondary-bg-color, #2a2a4a);
   border-radius: 12px; overflow: hidden;
@@ -505,14 +521,16 @@ tg.expand();
   }
 
   footerEl.style.display = 'block';
-  if (startTotal) {
-    var n = parseAmount(startTotal);
-    totalValueEl.textContent = n > 0 ? formatAmount(n) : startTotal;
-  } else {
-    totalValueEl.textContent = '—';
-  }
+  var companyCheckAmounts = [];
 
   if (isTrader) {
+    if (startTotal) {
+      var n = parseAmount(startTotal);
+      totalValueEl.textContent = n > 0 ? formatAmount(n) : startTotal;
+    } else {
+      totalValueEl.textContent = '—';
+    }
+
     checksRowEl.style.display = 'flex';
     updateChecksUI();
     fileIds.forEach(function(fid, idx) {
@@ -541,30 +559,61 @@ tg.expand();
       });
       togglesContainer.appendChild(row);
     });
-  }
 
-  editBtnEl.addEventListener('click', function() {
-    totalDisplayEl.style.display = 'none';
-    totalInputWrapEl.classList.add('active');
-    totalInputEl.value = currentTotal || '';
-    totalInputEl.focus();
-  });
+    editBtnEl.addEventListener('click', function() {
+      totalDisplayEl.style.display = 'none';
+      totalInputWrapEl.classList.add('active');
+      totalInputEl.value = currentTotal || '';
+      totalInputEl.focus();
+    });
 
-  totalSaveEl.addEventListener('click', function() {
-    var val = totalInputEl.value.trim();
-    if (val) {
-      currentTotal = val;
-      var n = parseAmount(val);
-      totalValueEl.textContent = n > 0 ? formatAmount(n) : val;
-      if (originalTotal && val !== originalTotal) {
-        wasTotalEl.textContent = 'was ' + originalTotal;
-        wasTotalEl.style.display = 'block';
+    totalSaveEl.addEventListener('click', function() {
+      var val = totalInputEl.value.trim();
+      if (val) {
+        currentTotal = val;
+        var n = parseAmount(val);
+        totalValueEl.textContent = n > 0 ? formatAmount(n) : val;
+        if (originalTotal && val !== originalTotal) {
+          wasTotalEl.textContent = 'was ' + originalTotal;
+          wasTotalEl.style.display = 'block';
+        }
+      }
+      totalInputWrapEl.classList.remove('active');
+      totalDisplayEl.style.display = 'flex';
+      sendUpdate();
+    });
+  } else {
+    editBtnEl.style.display = 'none';
+    totalValueEl.textContent = startTotal ? formatAmount(parseAmount(startTotal)) : '0';
+
+    function recalcCompanyTotal() {
+      var sum = 0;
+      for (var ci = 0; ci < companyCheckAmounts.length; ci++) {
+        sum += parseAmount(companyCheckAmounts[ci] || '');
+      }
+      currentTotal = sum > 0 ? formatAmount(sum) : '0';
+      totalValueEl.textContent = currentTotal;
+      if (sum > 0) {
+        sendUpdate();
       }
     }
-    totalInputWrapEl.classList.remove('active');
-    totalDisplayEl.style.display = 'flex';
-    sendUpdate();
-  });
+
+    fileIds.forEach(function(fid, idx) {
+      companyCheckAmounts.push('');
+      var row = document.createElement('div');
+      row.className = 'company-check-row';
+      row.innerHTML =
+        '<span class="company-check-label">✅ Check ' + (idx + 1) + '</span>' +
+        '<input class="company-check-input" type="text" inputmode="text" autocomplete="off" ' +
+        'placeholder="amount" data-idx="' + idx + '">';
+      togglesContainer.appendChild(row);
+      var inp = row.querySelector('.company-check-input');
+      inp.addEventListener('input', function() {
+        companyCheckAmounts[parseInt(this.dataset.idx)] = this.value.trim();
+        recalcCompanyTotal();
+      });
+    });
+  }
 
   fullscreen.addEventListener('click', function() { fullscreen.classList.remove('active'); });
 
