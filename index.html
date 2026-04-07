@@ -239,56 +239,55 @@ h1 { font-size: 20px; font-weight: 600; margin-bottom: 16px; text-align: center;
 .viewer-check-status.pending { background: rgba(255,193,7,0.15); color: #ffc107; }
 .viewer-check-status.received { background: rgba(76,175,80,0.15); color: #4caf50; }
 
-.co-table {
-  width: 100%; border-collapse: collapse;
-  margin: 0;
+.co-row {
+  display: flex; align-items: center;
+  padding: 11px 16px; gap: 10px;
+  border-top: 1px solid rgba(255,255,255,0.06);
 }
-.co-table td { padding: 12px 8px; vertical-align: middle; }
-.co-table tr:not(:last-child) td { border-bottom: 1px solid rgba(255,255,255,0.05); }
-.co-table .col-name { font-size: 14px; font-weight: 500; padding-left: 16px; white-space: nowrap; }
-.co-table .col-icon { width: 24px; text-align: center; font-size: 15px; }
-.co-table .col-amt { text-align: right; font-size: 15px; font-weight: 600; padding-right: 8px; }
-.co-table .col-amt.empty { color: var(--tg-theme-hint-color, #666); font-weight: 400; }
-.co-table .col-edit { width: 40px; text-align: center; padding-right: 14px; }
-.co-table .col-edit button {
-  background: none; border: none; cursor: pointer; padding: 4px;
-  color: var(--tg-theme-button-color, #3390ec); font-size: 13px; font-weight: 500;
+.co-row-name { font-size: 14px; font-weight: 500; }
+.co-row-icon { font-size: 14px; }
+.co-row-spacer { flex: 1; }
+.co-row-amt { font-size: 15px; font-weight: 600; }
+.co-row-amt.empty { color: var(--tg-theme-hint-color, #666); font-weight: 400; }
+.co-row-edit {
+  background: none; border: none; cursor: pointer;
+  color: var(--tg-theme-button-color, #3390ec); font-size: 13px; font-weight: 600;
+  padding: 2px 6px;
 }
-.co-table .col-input { display: none; }
-.co-table tr.editing .col-amt,
-.co-table tr.editing .col-edit { display: none; }
-.co-table tr.editing .col-input {
-  display: table-cell; padding-right: 14px;
+.co-row-input {
+  display: none; flex: 1; gap: 8px; align-items: center;
 }
-.co-table .col-input-inner {
-  display: flex; gap: 6px; align-items: center; justify-content: flex-end;
-}
-.co-table .col-input input {
-  width: 90px; padding: 8px 12px;
+.co-row.editing .co-row-amt,
+.co-row.editing .co-row-edit,
+.co-row.editing .co-row-spacer { display: none; }
+.co-row.editing .co-row-input { display: flex; }
+.co-row-input input {
+  flex: 1; min-width: 0; padding: 10px 14px;
   border: 2px solid var(--tg-theme-secondary-bg-color, #2a2a4a); border-radius: 10px;
   background: var(--tg-theme-secondary-bg-color, #2a2a4a);
-  color: var(--tg-theme-text-color, #eee);
-  font-size: 15px; font-weight: 500; outline: none; text-align: right;
-  transition: border-color 0.15s;
+  color: var(--tg-theme-text-color, #eee); font-size: 15px; font-weight: 500;
+  outline: none; transition: border-color 0.15s;
 }
-.co-table .col-input input:focus { border-color: var(--tg-theme-button-color, #3390ec); }
-.co-table .col-input input::placeholder { color: var(--tg-theme-hint-color, #666); font-weight: 400; }
-.co-table .col-input button {
+.co-row-input input:focus { border-color: var(--tg-theme-button-color, #3390ec); }
+.co-row-input input::placeholder { color: var(--tg-theme-hint-color, #666); font-weight: 400; }
+.co-row-input button {
   background: var(--tg-theme-button-color, #3390ec);
   color: var(--tg-theme-button-text-color, #fff);
-  border: none; border-radius: 10px; padding: 8px 14px;
+  border: none; border-radius: 10px; padding: 10px 16px;
   font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap;
 }
-.co-table .col-input button:active { opacity: 0.8; }
-.co-total-row td {
-  border-top: 2px solid rgba(255,255,255,0.08) !important;
-  background: rgba(255,255,255,0.02);
+.co-row-input button:active { opacity: 0.8; }
+.co-total {
+  display: flex; align-items: center; padding: 14px 16px;
+  border-top: 2px solid rgba(255,255,255,0.08);
 }
-.co-total-row .col-name {
+.co-total-label {
   font-size: 13px; font-weight: 700; text-transform: uppercase;
   letter-spacing: 0.5px; color: var(--tg-theme-hint-color, #888);
 }
-.co-total-row .col-amt { font-size: 17px; font-weight: 700; }
+.co-total-spacer { flex: 1; }
+.co-total-value { font-size: 17px; font-weight: 700; }
+.co-total-value.empty { color: var(--tg-theme-hint-color, #666); font-weight: 400; }
 
 .viewer-footer {
   background: var(--tg-theme-secondary-bg-color, #2a2a4a);
@@ -621,9 +620,7 @@ tg.expand();
     editBtnEl.style.display = 'none';
     footerEl.style.display = 'none';
 
-    var tbl = document.createElement('table');
-    tbl.className = 'co-table';
-    var tbody = document.createElement('tbody');
+    var totalValEl = document.createElement('span');
 
     function recalcCompanyTotal() {
       var sum = 0;
@@ -631,50 +628,97 @@ tg.expand();
         sum += parseAmount(companyCheckAmounts[ci] || '');
       }
       currentTotal = sum > 0 ? formatAmount(sum) : '0';
-      totalCell.textContent = sum > 0 ? currentTotal : '—';
-      totalCell.className = sum > 0 ? 'col-amt' : 'col-amt empty';
+      totalValEl.textContent = sum > 0 ? currentTotal : '—';
+      totalValEl.className = sum > 0 ? 'co-total-value' : 'co-total-value empty';
       if (sum > 0) sendUpdate();
     }
 
     fileIds.forEach(function(fid, idx) {
       companyCheckAmounts.push('');
-      var tr = document.createElement('tr');
-      tr.innerHTML =
-        '<td class="col-name">Check ' + (idx + 1) + '</td>' +
-        '<td class="col-icon">✅</td>' +
-        '<td class="col-amt empty">—</td>' +
-        '<td class="col-edit"><button>edit</button></td>' +
-        '<td class="col-input"><div class="col-input-inner"><input type="text" inputmode="text" placeholder="50k"><button>Save</button></div></td>';
-      tbody.appendChild(tr);
+      var row = document.createElement('div');
+      row.className = 'co-row';
 
-      var amtTd = tr.querySelector('.col-amt');
-      var editTd = tr.querySelector('.col-edit button');
-      var inpEl = tr.querySelector('.col-input input');
-      var okBtn = tr.querySelector('.col-input button');
+      var nameEl = document.createElement('span');
+      nameEl.className = 'co-row-name';
+      nameEl.textContent = 'Check ' + (idx + 1);
 
-      editTd.addEventListener('click', function() { tr.classList.add('editing'); inpEl.value = companyCheckAmounts[idx] || ''; inpEl.focus(); });
+      var iconEl = document.createElement('span');
+      iconEl.className = 'co-row-icon';
+      iconEl.textContent = '✅';
+
+      var spacer = document.createElement('span');
+      spacer.className = 'co-row-spacer';
+
+      var amtEl = document.createElement('span');
+      amtEl.className = 'co-row-amt empty';
+      amtEl.textContent = '—';
+
+      var editBtn = document.createElement('button');
+      editBtn.className = 'co-row-edit';
+      editBtn.textContent = 'edit';
+
+      var inputWrap = document.createElement('div');
+      inputWrap.className = 'co-row-input';
+      var inp = document.createElement('input');
+      inp.type = 'text'; inp.inputMode = 'text'; inp.autocomplete = 'off';
+      inp.placeholder = 'e.g. 50k';
+      var saveBtn = document.createElement('button');
+      saveBtn.textContent = 'Save';
+      inputWrap.appendChild(inp);
+      inputWrap.appendChild(saveBtn);
+
+      row.appendChild(nameEl);
+      row.appendChild(iconEl);
+      row.appendChild(spacer);
+      row.appendChild(amtEl);
+      row.appendChild(editBtn);
+      row.appendChild(inputWrap);
+      togglesContainer.appendChild(row);
+
+      editBtn.addEventListener('click', function() {
+        row.classList.add('editing');
+        inp.value = companyCheckAmounts[idx] || '';
+        inp.focus();
+      });
 
       function commit() {
-        var v = inpEl.value.trim();
+        var v = inp.value.trim();
         companyCheckAmounts[idx] = v;
         var n = parseAmount(v);
-        amtTd.textContent = n > 0 ? formatAmount(n) : '—';
-        amtTd.className = n > 0 ? 'col-amt' : 'col-amt empty';
-        tr.classList.remove('editing');
+        amtEl.textContent = n > 0 ? formatAmount(n) : '—';
+        amtEl.className = n > 0 ? 'co-row-amt' : 'co-row-amt empty';
+        row.classList.remove('editing');
         recalcCompanyTotal();
       }
-      okBtn.addEventListener('click', commit);
-      inpEl.addEventListener('keydown', function(e) { if (e.key === 'Enter') { e.preventDefault(); commit(); } });
+      saveBtn.addEventListener('click', commit);
+      inp.addEventListener('keydown', function(e) { if (e.key === 'Enter') { e.preventDefault(); commit(); } });
     });
 
-    var totalTr = document.createElement('tr');
-    totalTr.className = 'co-total-row';
-    totalTr.innerHTML = '<td class="col-name">Total</td><td class="col-icon"></td><td class="col-amt empty" colspan="3">—</td>';
-    tbody.appendChild(totalTr);
-    var totalCell = totalTr.querySelector('.col-amt');
-
-    tbl.appendChild(tbody);
-    togglesContainer.appendChild(tbl);
+    var totalRow = document.createElement('div');
+    totalRow.className = 'co-total';
+    var totalLabel = document.createElement('span');
+    totalLabel.className = 'co-total-label';
+    totalLabel.textContent = 'Total';
+    var totalSpacer = document.createElement('span');
+    totalSpacer.className = 'co-total-spacer';
+    if (startTotal) {
+      var n = parseAmount(startTotal);
+      if (n > 0) {
+        totalValEl.className = 'co-total-value';
+        totalValEl.textContent = formatAmount(n);
+        currentTotal = formatAmount(n);
+      } else {
+        totalValEl.className = 'co-total-value empty';
+        totalValEl.textContent = '—';
+      }
+    } else {
+      totalValEl.className = 'co-total-value empty';
+      totalValEl.textContent = '—';
+    }
+    totalRow.appendChild(totalLabel);
+    totalRow.appendChild(totalSpacer);
+    totalRow.appendChild(totalValEl);
+    togglesContainer.appendChild(totalRow);
   }
 
   fullscreen.addEventListener('click', function() { fullscreen.classList.remove('active'); });
