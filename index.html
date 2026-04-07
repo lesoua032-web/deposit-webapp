@@ -162,8 +162,10 @@ h1 { font-size: 20px; font-weight: 600; margin-bottom: 16px; text-align: center;
 }
 .viewer-img-wrap:last-child { border-radius: 0 0 12px 12px; }
 .viewer-img {
-  width: 100%; display: block; cursor: pointer;
+  width: 100%; max-height: 280px; object-fit: contain;
+  display: block; cursor: pointer;
   transition: opacity 0.2s;
+  background: #000;
 }
 .viewer-img-wrap .viewer-img-num {
   position: absolute; top: 8px; left: 8px;
