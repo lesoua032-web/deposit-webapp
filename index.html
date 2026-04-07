@@ -355,6 +355,7 @@ tg.expand();
   var viewApi = '';
   var fileIds = [];
   var companyMsgId = '';
+  var startTotal = '';
 
   if (tg.initDataUnsafe && tg.initDataUnsafe.start_param) {
     try {
@@ -366,6 +367,7 @@ tg.expand();
         var seg = segments[i];
         if (seg.indexOf('a:') === 0) viewApi = seg.substring(2);
         else if (seg.indexOf('m:') === 0) companyMsgId = seg.substring(2);
+        else if (seg.indexOf('t:') === 0) startTotal = seg.substring(2);
         else if (seg.indexOf('f:') === 0) fileIds.push(seg.substring(2));
       }
     } catch(e) { console.error('startapp parse error', e); }
@@ -404,8 +406,8 @@ tg.expand();
   var wasTotalEl = document.getElementById('viewerWasTotal');
   var savingEl = document.getElementById('viewerSaving');
 
-  var originalTotal = '';
-  var currentTotal = '';
+  var originalTotal = startTotal;
+  var currentTotal = startTotal;
   var isSaving = false;
 
   function updateChecksUI() {
@@ -468,7 +470,12 @@ tg.expand();
 
   footerEl.style.display = 'block';
   updateChecksUI();
-  totalValueEl.textContent = '—';
+  if (startTotal) {
+    var n = parseAmount(startTotal);
+    totalValueEl.textContent = n > 0 ? formatAmount(n) : startTotal;
+  } else {
+    totalValueEl.textContent = '—';
+  }
 
   fileIds.forEach(function(fid, idx) {
     var row = document.createElement('div');
