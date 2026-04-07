@@ -197,6 +197,81 @@ h1 { font-size: 20px; font-weight: 600; margin-bottom: 16px; text-align: center;
 .viewer-fullscreen img {
   max-width: 95vw; max-height: 90vh; object-fit: contain; border-radius: 4px;
 }
+
+.viewer-check-toggle {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 16px;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  cursor: pointer; transition: background 0.12s;
+  -webkit-tap-highlight-color: transparent;
+}
+.viewer-check-toggle:active { background: rgba(255,255,255,0.03); }
+.viewer-check-label {
+  font-size: 14px; font-weight: 500;
+}
+.viewer-check-status {
+  font-size: 13px; padding: 4px 12px; border-radius: 20px; font-weight: 600;
+  transition: all 0.15s;
+}
+.viewer-check-status.pending {
+  background: rgba(255,193,7,0.15); color: #ffc107;
+}
+.viewer-check-status.received {
+  background: rgba(76,175,80,0.15); color: #4caf50;
+}
+
+.viewer-footer {
+  background: var(--tg-theme-secondary-bg-color, #2a2a4a);
+  border-radius: 12px; overflow: hidden;
+}
+.viewer-footer-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 16px;
+}
+.viewer-footer-row + .viewer-footer-row {
+  border-top: 1px solid rgba(255,255,255,0.06);
+}
+.viewer-footer-label {
+  font-size: 13px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.5px; color: var(--tg-theme-hint-color, #888);
+}
+.viewer-footer-value {
+  font-size: 15px; font-weight: 600;
+}
+.viewer-edit-btn {
+  background: none; border: none; cursor: pointer;
+  font-size: 18px; padding: 4px 8px; border-radius: 8px;
+  transition: background 0.12s;
+}
+.viewer-edit-btn:active { background: rgba(255,255,255,0.1); }
+.viewer-total-display {
+  display: flex; align-items: center; gap: 8px;
+}
+.viewer-total-input-wrap {
+  display: none; align-items: center; gap: 8px;
+}
+.viewer-total-input-wrap.active { display: flex; }
+.viewer-total-input {
+  width: 120px; padding: 8px 12px;
+  border: 2px solid var(--tg-theme-button-color, #3390ec); border-radius: 10px;
+  background: var(--tg-theme-bg-color, #1a1a2e);
+  color: var(--tg-theme-text-color, #eee); font-size: 15px; font-weight: 600;
+  outline: none;
+}
+.viewer-total-save {
+  padding: 8px 16px; border: none; border-radius: 10px;
+  background: var(--tg-theme-button-color, #3390ec);
+  color: var(--tg-theme-button-text-color, #fff);
+  font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.viewer-total-save:active { opacity: 0.8; }
+.viewer-was-total {
+  font-size: 11px; color: var(--tg-theme-hint-color, #999);
+}
+.viewer-saving {
+  font-size: 12px; color: var(--tg-theme-hint-color, #999);
+  padding: 8px 16px; text-align: center;
+}
 </style>
 </head>
 <body>
@@ -237,7 +312,27 @@ h1 { font-size: 20px; font-weight: 600; margin-bottom: 16px; text-align: center;
       <div class="spinner"></div>
       Loading check...
     </div>
+    <div id="viewerToggles"></div>
     <div class="viewer-counter" id="viewerCounter"></div>
+  </div>
+  <div class="viewer-footer" id="viewerFooter" style="display:none">
+    <div class="viewer-footer-row">
+      <span class="viewer-footer-label">Checks</span>
+      <span class="viewer-footer-value" id="viewerChecksCount">0/0 received</span>
+    </div>
+    <div class="viewer-footer-row">
+      <span class="viewer-footer-label">Total</span>
+      <div class="viewer-total-display" id="viewerTotalDisplay">
+        <span class="viewer-footer-value" id="viewerTotalValue">—</span>
+        <button class="viewer-edit-btn" id="viewerEditBtn">✏️</button>
+      </div>
+      <div class="viewer-total-input-wrap" id="viewerTotalInputWrap">
+        <input type="text" class="viewer-total-input" id="viewerTotalInput" inputmode="text" placeholder="e.g. 400k">
+        <button class="viewer-total-save" id="viewerTotalSave">Save</button>
+      </div>
+    </div>
+    <div class="viewer-was-total" id="viewerWasTotal" style="display:none; padding:0 16px 10px;"></div>
+    <div class="viewer-saving" id="viewerSaving" style="display:none">Saving...</div>
   </div>
 </div>
 
@@ -259,6 +354,7 @@ tg.expand();
 (function checkViewMode() {
   var viewApi = '';
   var fileIds = [];
+  var companyMsgId = '';
 
   if (tg.initDataUnsafe && tg.initDataUnsafe.start_param) {
     try {
@@ -269,6 +365,7 @@ tg.expand();
       for (var i = 0; i < segments.length; i++) {
         var seg = segments[i];
         if (seg.indexOf('a:') === 0) viewApi = seg.substring(2);
+        else if (seg.indexOf('m:') === 0) companyMsgId = seg.substring(2);
         else if (seg.indexOf('f:') === 0) fileIds.push(seg.substring(2));
       }
     } catch(e) { console.error('startapp parse error', e); }
@@ -287,10 +384,141 @@ tg.expand();
   var counter = document.getElementById('viewerCounter');
   var gallery = document.getElementById('viewerGallery');
   var loading = document.getElementById('viewerLoading');
+  var togglesContainer = document.getElementById('viewerToggles');
   var fullscreen = document.getElementById('viewerFullscreen');
   var fullImg = document.getElementById('viewerFullImg');
   var loaded = 0;
   var errors = 0;
+
+  var checkStatuses = [];
+  for (var s = 0; s < fileIds.length; s++) checkStatuses.push('pending');
+
+  var footerEl = document.getElementById('viewerFooter');
+  var checksCountEl = document.getElementById('viewerChecksCount');
+  var totalValueEl = document.getElementById('viewerTotalValue');
+  var totalDisplayEl = document.getElementById('viewerTotalDisplay');
+  var totalInputWrapEl = document.getElementById('viewerTotalInputWrap');
+  var totalInputEl = document.getElementById('viewerTotalInput');
+  var totalSaveEl = document.getElementById('viewerTotalSave');
+  var editBtnEl = document.getElementById('viewerEditBtn');
+  var wasTotalEl = document.getElementById('viewerWasTotal');
+  var savingEl = document.getElementById('viewerSaving');
+
+  var originalTotal = '';
+  var currentTotal = '';
+  var isSaving = false;
+
+  function updateChecksUI() {
+    var received = 0;
+    for (var c = 0; c < checkStatuses.length; c++) {
+      if (checkStatuses[c] === 'received') received++;
+    }
+    checksCountEl.textContent = received + '/' + fileIds.length + ' received';
+  }
+
+  function parseAmount(str) {
+    if (!str) return 0;
+    str = str.replace(/[\s,]/g, '').toLowerCase();
+    var mult = 1;
+    if (str.indexOf('k') !== -1) { mult = 1000; str = str.replace(/k/g, ''); }
+    else if (str.indexOf('m') !== -1) { mult = 1000000; str = str.replace(/m/g, ''); }
+    var n = parseFloat(str);
+    return isNaN(n) ? 0 : n * mult;
+  }
+
+  function formatAmount(n) {
+    if (!n || n === 0) return '0';
+    if (n >= 1000000) return (n / 1000000) + 'm';
+    if (n >= 1000) return (n / 1000) + 'k';
+    return String(n);
+  }
+
+  function sendUpdate() {
+    if (isSaving || !viewApi || !companyMsgId) return;
+    isSaving = true;
+    savingEl.style.display = 'block';
+    var body = {
+      company_msg_id: parseInt(companyMsgId),
+      check_statuses: checkStatuses
+    };
+    var adj = parseAmount(currentTotal);
+    if (currentTotal && adj > 0 && currentTotal !== originalTotal) {
+      body.adjusted_total = adj;
+    }
+    fetch(viewApi + '/api/update-checks', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'ngrok-skip-browser-warning': '1'
+      },
+      body: JSON.stringify(body)
+    })
+    .then(function(resp) { return resp.json(); })
+    .then(function(data) {
+      isSaving = false;
+      savingEl.style.display = 'none';
+      if (!data.ok) console.error('update-checks error:', data.error);
+    })
+    .catch(function(err) {
+      isSaving = false;
+      savingEl.style.display = 'none';
+      console.error('update-checks fetch error:', err);
+    });
+  }
+
+  footerEl.style.display = 'block';
+  updateChecksUI();
+  totalValueEl.textContent = '—';
+
+  fileIds.forEach(function(fid, idx) {
+    var row = document.createElement('div');
+    row.className = 'viewer-check-toggle';
+    var label = document.createElement('span');
+    label.className = 'viewer-check-label';
+    label.textContent = '📷 Check ' + (idx + 1);
+    var badge = document.createElement('span');
+    badge.className = 'viewer-check-status pending';
+    badge.textContent = '⏳ Pending';
+    row.appendChild(label);
+    row.appendChild(badge);
+    row.addEventListener('click', function() {
+      if (checkStatuses[idx] === 'pending') {
+        checkStatuses[idx] = 'received';
+        badge.className = 'viewer-check-status received';
+        badge.textContent = '✅ Received';
+      } else {
+        checkStatuses[idx] = 'pending';
+        badge.className = 'viewer-check-status pending';
+        badge.textContent = '⏳ Pending';
+      }
+      updateChecksUI();
+      sendUpdate();
+    });
+    togglesContainer.appendChild(row);
+  });
+
+  editBtnEl.addEventListener('click', function() {
+    totalDisplayEl.style.display = 'none';
+    totalInputWrapEl.classList.add('active');
+    totalInputEl.value = currentTotal || '';
+    totalInputEl.focus();
+  });
+
+  totalSaveEl.addEventListener('click', function() {
+    var val = totalInputEl.value.trim();
+    if (val) {
+      currentTotal = val;
+      var n = parseAmount(val);
+      totalValueEl.textContent = n > 0 ? formatAmount(n) : val;
+      if (originalTotal && val !== originalTotal) {
+        wasTotalEl.textContent = 'was ' + originalTotal;
+        wasTotalEl.style.display = 'block';
+      }
+    }
+    totalInputWrapEl.classList.remove('active');
+    totalDisplayEl.style.display = 'flex';
+    sendUpdate();
+  });
 
   fullscreen.addEventListener('click', function() { fullscreen.classList.remove('active'); });
 
