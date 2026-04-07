@@ -239,44 +239,46 @@ h1 { font-size: 20px; font-weight: 600; margin-bottom: 16px; text-align: center;
 .viewer-check-status.pending { background: rgba(255,193,7,0.15); color: #ffc107; }
 .viewer-check-status.received { background: rgba(76,175,80,0.15); color: #4caf50; }
 
-.co-check {
-  display: flex; align-items: center; gap: 12px;
-  padding: 12px 16px;
+.co-table {
+  width: 100%; border-collapse: collapse;
   border-top: 1px solid rgba(255,255,255,0.05);
 }
-.co-check-name { font-size: 14px; font-weight: 500; flex-shrink: 0; }
-.co-check-icon { font-size: 16px; flex-shrink: 0; }
-.co-check-spacer { flex: 1; }
-.co-check-amount {
-  font-size: 15px; font-weight: 600;
-  color: var(--tg-theme-text-color, #eee);
-  white-space: nowrap;
-}
-.co-check-amount.empty { color: var(--tg-theme-hint-color, #666); font-weight: 400; }
-.co-check-edit-btn {
+.co-table td { padding: 11px 6px; vertical-align: middle; }
+.co-table tr:not(:last-child) td { border-bottom: 1px solid rgba(255,255,255,0.05); }
+.co-table .col-name { font-size: 14px; font-weight: 500; padding-left: 16px; white-space: nowrap; }
+.co-table .col-icon { width: 28px; text-align: center; font-size: 15px; }
+.co-table .col-amt { text-align: right; font-size: 15px; font-weight: 600; white-space: nowrap; min-width: 60px; }
+.co-table .col-amt.empty { color: var(--tg-theme-hint-color, #666); font-weight: 400; }
+.co-table .col-edit { width: 36px; text-align: center; padding-right: 12px; }
+.co-table .col-edit button {
   background: none; border: none; font-size: 14px; cursor: pointer;
   padding: 4px; opacity: 0.5; transition: opacity 0.15s;
 }
-.co-check-edit-btn:hover, .co-check-edit-btn:active { opacity: 1; }
-.co-check-input-wrap {
-  display: none; flex: 1; gap: 6px; align-items: center;
+.co-table .col-edit button:active { opacity: 1; }
+.co-table .col-input { display: none; }
+.co-table tr.editing .col-amt,
+.co-table tr.editing .col-edit { display: none; }
+.co-table tr.editing .col-input {
+  display: table-cell; text-align: right; padding-right: 12px;
 }
-.co-check-input-wrap.active { display: flex; }
-.co-check-input {
-  flex: 1; min-width: 0;
-  padding: 6px 10px; border: none; border-bottom: 2px solid var(--tg-theme-button-color, #3390ec);
-  background: transparent;
-  color: var(--tg-theme-text-color, #eee); font-size: 15px; font-weight: 600;
-  outline: none; text-align: right;
+.co-table .col-input input {
+  width: 80px; padding: 5px 8px; border: none;
+  border-bottom: 2px solid var(--tg-theme-button-color, #3390ec);
+  background: transparent; color: var(--tg-theme-text-color, #eee);
+  font-size: 15px; font-weight: 600; outline: none; text-align: right;
 }
-.co-check-input::placeholder { color: var(--tg-theme-hint-color, #666); font-weight: 400; }
-.co-check-save {
-  background: var(--tg-theme-button-color, #3390ec);
-  color: var(--tg-theme-button-text-color, #fff);
-  border: none; border-radius: 8px; padding: 5px 12px;
-  font-size: 12px; font-weight: 600; cursor: pointer;
+.co-table .col-input input::placeholder { color: var(--tg-theme-hint-color, #666); font-weight: 400; }
+.co-table .col-input button {
+  margin-left: 4px; background: var(--tg-theme-button-color, #3390ec);
+  color: #fff; border: none; border-radius: 6px; padding: 4px 10px;
+  font-size: 12px; font-weight: 600; cursor: pointer; vertical-align: middle;
 }
-.co-check-save:active { opacity: 0.8; }
+.co-total-row td { border-top: 2px solid rgba(255,255,255,0.1) !important; }
+.co-total-row .col-name {
+  font-size: 13px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.5px; color: var(--tg-theme-hint-color, #888);
+}
+.co-total-row .col-amt { font-size: 17px; font-weight: 700; }
 
 .viewer-footer {
   background: var(--tg-theme-secondary-bg-color, #2a2a4a);
@@ -607,7 +609,11 @@ tg.expand();
     });
   } else {
     editBtnEl.style.display = 'none';
-    totalValueEl.textContent = startTotal ? formatAmount(parseAmount(startTotal)) : '—';
+    footerEl.style.display = 'none';
+
+    var tbl = document.createElement('table');
+    tbl.className = 'co-table';
+    var tbody = document.createElement('tbody');
 
     function recalcCompanyTotal() {
       var sum = 0;
@@ -615,90 +621,50 @@ tg.expand();
         sum += parseAmount(companyCheckAmounts[ci] || '');
       }
       currentTotal = sum > 0 ? formatAmount(sum) : '0';
-      totalValueEl.textContent = sum > 0 ? currentTotal : '—';
+      totalCell.textContent = sum > 0 ? currentTotal : '—';
+      totalCell.className = sum > 0 ? 'col-amt' : 'col-amt empty';
       if (sum > 0) sendUpdate();
     }
 
     fileIds.forEach(function(fid, idx) {
       companyCheckAmounts.push('');
+      var tr = document.createElement('tr');
+      tr.innerHTML =
+        '<td class="col-name">Check ' + (idx + 1) + '</td>' +
+        '<td class="col-icon">✅</td>' +
+        '<td class="col-amt empty">—</td>' +
+        '<td class="col-edit"><button>✏️</button></td>' +
+        '<td class="col-input"><input type="text" inputmode="text" placeholder="50k"><button>OK</button></td>';
+      tbody.appendChild(tr);
 
-      var row = document.createElement('div');
-      row.className = 'co-check';
+      var amtTd = tr.querySelector('.col-amt');
+      var editTd = tr.querySelector('.col-edit button');
+      var inpEl = tr.querySelector('.col-input input');
+      var okBtn = tr.querySelector('.col-input button');
 
-      var nameEl = document.createElement('span');
-      nameEl.className = 'co-check-name';
-      nameEl.textContent = 'Check ' + (idx + 1);
+      editTd.addEventListener('click', function() { tr.classList.add('editing'); inpEl.value = companyCheckAmounts[idx] || ''; inpEl.focus(); });
 
-      var iconEl = document.createElement('span');
-      iconEl.className = 'co-check-icon';
-      iconEl.textContent = '✅';
-
-      var spacer = document.createElement('span');
-      spacer.className = 'co-check-spacer';
-
-      var amtEl = document.createElement('span');
-      amtEl.className = 'co-check-amount empty';
-      amtEl.textContent = '—';
-
-      var editBtn = document.createElement('button');
-      editBtn.className = 'co-check-edit-btn';
-      editBtn.textContent = '✏️';
-
-      var inputWrap = document.createElement('div');
-      inputWrap.className = 'co-check-input-wrap';
-      var inp = document.createElement('input');
-      inp.className = 'co-check-input';
-      inp.type = 'text';
-      inp.inputMode = 'text';
-      inp.autocomplete = 'off';
-      inp.placeholder = 'e.g. 50k';
-      inp.dataset.idx = idx;
-      var saveBtn = document.createElement('button');
-      saveBtn.className = 'co-check-save';
-      saveBtn.textContent = 'OK';
-      inputWrap.appendChild(inp);
-      inputWrap.appendChild(saveBtn);
-
-      row.appendChild(nameEl);
-      row.appendChild(iconEl);
-      row.appendChild(spacer);
-      row.appendChild(amtEl);
-      row.appendChild(editBtn);
-      row.appendChild(inputWrap);
-      togglesContainer.appendChild(row);
-
-      editBtn.addEventListener('click', function() {
-        amtEl.style.display = 'none';
-        editBtn.style.display = 'none';
-        spacer.style.display = 'none';
-        inputWrap.classList.add('active');
-        inp.value = companyCheckAmounts[idx] || '';
-        inp.focus();
-      });
-
-      function commitValue() {
-        var val = inp.value.trim();
-        companyCheckAmounts[idx] = val;
-        var n = parseAmount(val);
-        if (n > 0) {
-          amtEl.textContent = formatAmount(n);
-          amtEl.className = 'co-check-amount';
-        } else {
-          amtEl.textContent = '—';
-          amtEl.className = 'co-check-amount empty';
-        }
-        inputWrap.classList.remove('active');
-        amtEl.style.display = '';
-        editBtn.style.display = '';
-        spacer.style.display = '';
+      function commit() {
+        var v = inpEl.value.trim();
+        companyCheckAmounts[idx] = v;
+        var n = parseAmount(v);
+        amtTd.textContent = n > 0 ? formatAmount(n) : '—';
+        amtTd.className = n > 0 ? 'col-amt' : 'col-amt empty';
+        tr.classList.remove('editing');
         recalcCompanyTotal();
       }
-
-      saveBtn.addEventListener('click', commitValue);
-      inp.addEventListener('keydown', function(e) {
-        if (e.key === 'Enter') { e.preventDefault(); commitValue(); }
-      });
+      okBtn.addEventListener('click', commit);
+      inpEl.addEventListener('keydown', function(e) { if (e.key === 'Enter') { e.preventDefault(); commit(); } });
     });
+
+    var totalTr = document.createElement('tr');
+    totalTr.className = 'co-total-row';
+    totalTr.innerHTML = '<td class="col-name">Total</td><td class="col-icon"></td><td class="col-amt empty" colspan="3">—</td>';
+    tbody.appendChild(totalTr);
+    var totalCell = totalTr.querySelector('.col-amt');
+
+    tbl.appendChild(tbody);
+    togglesContainer.appendChild(tbl);
   }
 
   fullscreen.addEventListener('click', function() { fullscreen.classList.remove('active'); });
