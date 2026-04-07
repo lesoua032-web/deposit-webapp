@@ -283,7 +283,7 @@ tg.expand();
     if (!viewApi) viewApi = params.get('api') || '';
   }
 
-  if (!viewFileIds.length) return;
+  if (!viewFileIds.length) return false;
 
   document.getElementById('content').style.display = 'none';
   document.getElementById('emptyState').style.display = 'none';
@@ -304,32 +304,12 @@ tg.expand();
   fullscreen.addEventListener('click', function() { fullscreen.classList.remove('active'); });
 
   viewFileIds.forEach(function(fid, idx) {
-    var imgUrl = viewApi + '/api/check-photo?file_id=' + encodeURIComponent(fid) +
-                 '&init_data=' + encodeURIComponent(tg.initData || '');
+    var imgUrl = viewApi + '/api/check-photo?file_id=' + encodeURIComponent(fid);
     var imgWrap = document.createElement('div');
     imgWrap.className = 'viewer-img-wrap';
     var img = new Image();
     img.className = 'viewer-img';
     img.alt = 'Check ' + (idx + 1);
-    img.onload = function() {
-      loaded++;
-      if (loaded + errors === viewFileIds.length) {
-        loading.style.display = 'none';
-        if (viewFileIds.length > 1) counter.textContent = loaded + ' of ' + viewFileIds.length + ' photos';
-      }
-    };
-    img.onerror = function() {
-      errors++;
-      imgWrap.style.display = 'none';
-      if (loaded + errors === viewFileIds.length) {
-        loading.style.display = 'none';
-        if (errors === viewFileIds.length) {
-          gallery.innerHTML = '<div class="viewer-error">Failed to load check photos</div>';
-        } else if (viewFileIds.length > 1) {
-          counter.textContent = loaded + ' of ' + viewFileIds.length + ' photos';
-        }
-      }
-    };
     img.addEventListener('click', function() {
       fullImg.src = this.src;
       fullscreen.classList.add('active');
@@ -342,10 +322,38 @@ tg.expand();
       imgWrap.appendChild(num);
     }
     gallery.appendChild(imgWrap);
-    img.src = imgUrl;
+
+    fetch(imgUrl, { headers: { 'ngrok-skip-browser-warning': '1' } })
+      .then(function(resp) {
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        return resp.blob();
+      })
+      .then(function(blob) {
+        img.src = URL.createObjectURL(blob);
+        loaded++;
+        if (loaded + errors === viewFileIds.length) {
+          loading.style.display = 'none';
+          if (viewFileIds.length > 1) counter.textContent = loaded + ' of ' + viewFileIds.length + ' photos';
+        }
+      })
+      .catch(function(err) {
+        console.error('Photo load error:', err);
+        errors++;
+        imgWrap.style.display = 'none';
+        if (loaded + errors === viewFileIds.length) {
+          loading.style.display = 'none';
+          if (errors === viewFileIds.length) {
+            gallery.innerHTML = '<div class="viewer-error">Failed to load check photos</div>';
+          } else if (viewFileIds.length > 1) {
+            counter.textContent = loaded + ' of ' + viewFileIds.length + ' photos';
+          }
+        }
+      });
   });
   return true;
 })();
+
+var _isViewMode = document.getElementById('viewerWrap').classList.contains('active');
 
 var selectedAccId = null;
 var accounts = [];
@@ -364,7 +372,7 @@ try {
   isWebMode = params.get('m') === 'web';
 } catch(e) { console.error('URL params parse error', e); }
 
-if (!accounts.length && tg.initDataUnsafe && tg.initDataUnsafe.start_param) {
+if (!_isViewMode && !accounts.length && tg.initDataUnsafe && tg.initDataUnsafe.start_param) {
   try {
     fromStartParam = true;
     var sp = tg.initDataUnsafe.start_param;
@@ -406,7 +414,10 @@ if (!hasApi) {
   photoArea.style.display = 'none';
 }
 
-if (!accounts.length) {
+if (_isViewMode) {
+  contentEl.style.display = 'none';
+  emptyEl.style.display = 'none';
+} else if (!accounts.length) {
   contentEl.style.display = 'none';
   emptyEl.style.display = 'block';
 } else {
