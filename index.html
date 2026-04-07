@@ -198,6 +198,29 @@ h1 { font-size: 20px; font-weight: 600; margin-bottom: 16px; text-align: center;
   max-width: 95vw; max-height: 90vh; object-fit: contain; border-radius: 4px;
 }
 
+.per-photo-item {
+  background: var(--tg-theme-secondary-bg-color, #2a2a4a);
+  border-radius: 12px; overflow: hidden; margin-bottom: 8px;
+}
+.per-photo-item-header {
+  display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+}
+.per-photo-item-thumb {
+  width: 48px; height: 48px; border-radius: 8px; object-fit: cover; flex-shrink: 0;
+}
+.per-photo-item-label {
+  font-size: 14px; font-weight: 500; flex: 1;
+}
+.per-photo-item-input {
+  width: 100%; padding: 10px 12px;
+  border: none; border-top: 1px solid rgba(255,255,255,0.06);
+  background: transparent;
+  color: var(--tg-theme-text-color, #eee); font-size: 15px; font-weight: 500;
+  outline: none;
+}
+.per-photo-item-input::placeholder { color: var(--tg-theme-hint-color, #aaa); font-weight: 400; }
+.per-photo-item-input:focus { background: rgba(51,144,236,0.05); }
+
 .viewer-check-toggle {
   display: flex; align-items: center; justify-content: space-between;
   padding: 10px 16px;
@@ -282,13 +305,6 @@ h1 { font-size: 20px; font-weight: 600; margin-bottom: 16px; text-align: center;
   <div class="section-label">Select account</div>
   <div id="accountList"></div>
 
-  <div class="section-label" style="margin-top:24px">Amount</div>
-  <div class="amount-wrap">
-    <input type="text" class="amount-input" id="amountInput"
-           placeholder="e.g. 50000 or 50k" inputmode="text" autocomplete="off">
-  </div>
-  <div class="hint">Numbers, k (thousands), m (millions)</div>
-
   <div class="section-label" id="photoLabel" style="margin-top:24px">Check photos</div>
   <div class="photo-area" id="photoArea">
     <div class="photo-placeholder">
@@ -297,6 +313,23 @@ h1 { font-size: 20px; font-weight: 600; margin-bottom: 16px; text-align: center;
     </div>
   </div>
   <input type="file" id="photoInput" accept="image/*" multiple style="display:none">
+
+  <div id="amountSection">
+    <div class="section-label" style="margin-top:24px">Amount</div>
+    <div class="amount-wrap">
+      <input type="text" class="amount-input" id="amountInput"
+             placeholder="e.g. 50000 or 50k" inputmode="text" autocomplete="off">
+    </div>
+    <div class="hint">Numbers, k (thousands), m (millions)</div>
+  </div>
+
+  <div id="perPhotoAmounts" style="display:none"></div>
+  <div id="autoTotal" style="display:none; margin-top:12px; padding:12px 16px; background:var(--tg-theme-secondary-bg-color, #2a2a4a); border-radius:12px;">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <span style="font-size:13px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; color:var(--tg-theme-hint-color, #888);">Total</span>
+      <span id="autoTotalValue" style="font-size:17px; font-weight:700;">0</span>
+    </div>
+  </div>
 
   <div class="error-msg" id="errorMsg"></div>
   <button class="submit-btn" id="submitBtn">📤 SUBMIT DEPOSIT</button>
@@ -712,10 +745,17 @@ photoInput.addEventListener('change', function() {
   photoInput.value = '';
 });
 
+var amountSection = document.getElementById('amountSection');
+var perPhotoAmountsEl = document.getElementById('perPhotoAmounts');
+var autoTotalEl = document.getElementById('autoTotal');
+var autoTotalValueEl = document.getElementById('autoTotalValue');
+var perPhotoMode = false;
+
 function renderPhotos() {
   if (selectedPhotos.length === 0) {
     photoArea.classList.remove('has-photos');
     photoArea.innerHTML = '<div class="photo-placeholder"><span class="icon">📷</span>Tap to select photos</div>';
+    switchAmountMode(false);
     return;
   }
   photoArea.classList.add('has-photos');
@@ -747,6 +787,69 @@ function renderPhotos() {
       updateButton();
     });
   });
+
+  switchAmountMode(selectedPhotos.length > 1);
+}
+
+function switchAmountMode(multi) {
+  perPhotoMode = multi;
+  if (multi) {
+    amountSection.style.display = 'none';
+    perPhotoAmountsEl.style.display = 'block';
+    autoTotalEl.style.display = 'block';
+    renderPerPhotoAmounts();
+  } else {
+    amountSection.style.display = 'block';
+    perPhotoAmountsEl.style.display = 'none';
+    autoTotalEl.style.display = 'none';
+  }
+}
+
+function renderPerPhotoAmounts() {
+  var html = '<div class="section-label" style="margin-top:24px">Amount per check</div>';
+  selectedPhotos.forEach(function(p, idx) {
+    var existingVal = p.amount || '';
+    html += '<div class="per-photo-item">' +
+      '<div class="per-photo-item-header">' +
+        '<img class="per-photo-item-thumb" src="' + p.dataUrl + '">' +
+        '<span class="per-photo-item-label">Check ' + (idx + 1) + '</span>' +
+      '</div>' +
+      '<input class="per-photo-item-input" type="text" inputmode="text" autocomplete="off" ' +
+        'placeholder="Amount for check ' + (idx + 1) + '" data-idx="' + idx + '" value="' + escapeHtml(existingVal) + '">' +
+    '</div>';
+  });
+  perPhotoAmountsEl.innerHTML = html;
+
+  perPhotoAmountsEl.querySelectorAll('.per-photo-item-input').forEach(function(inp) {
+    inp.addEventListener('input', function() {
+      var i = parseInt(this.dataset.idx);
+      selectedPhotos[i].amount = this.value.trim();
+      recalcTotal();
+      updateButton();
+    });
+  });
+  recalcTotal();
+}
+
+function recalcTotal() {
+  var sum = 0;
+  var allFilled = true;
+  selectedPhotos.forEach(function(p) {
+    var a = parseAmount(p.amount || '');
+    if (a && a > 0) {
+      sum += a;
+    } else {
+      allFilled = false;
+    }
+  });
+  if (sum >= 1000000) {
+    autoTotalValueEl.textContent = (sum / 1000000) + 'm';
+  } else if (sum >= 1000) {
+    autoTotalValueEl.textContent = Math.round(sum / 1000) + 'k';
+  } else {
+    autoTotalValueEl.textContent = sum > 0 ? String(sum) : '0';
+  }
+  return { sum: sum, allFilled: allFilled };
 }
 
 function escapeHtml(t) { var d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
@@ -765,9 +868,15 @@ function parseAmount(str) {
 }
 
 function updateButton() {
-  var val = amountEl.value.trim();
-  var amountParsed = parseAmount(val);
-  var amountOk = amountParsed && amountParsed > 0;
+  var amountOk = false;
+  if (perPhotoMode) {
+    var r = recalcTotal();
+    amountOk = r.allFilled && r.sum > 0;
+  } else {
+    var val = amountEl.value.trim();
+    var amountParsed = parseAmount(val);
+    amountOk = amountParsed && amountParsed > 0;
+  }
   var ready = selectedAccId !== null && amountOk;
   if (hasApi) ready = ready && selectedPhotos.length > 0;
   if (ready) {
@@ -818,13 +927,25 @@ async function handleSubmit() {
     errorEl.style.display = 'block';
     return;
   }
-  var amountRaw = amountEl.value.trim();
-  var amount = parseAmount(amountRaw);
 
-  if (!amount || amount <= 0) {
-    errorEl.textContent = 'Enter amount. Example: 50000, 50k, 1.5m';
-    errorEl.style.display = 'block';
-    return;
+  var amount, amountRaw;
+  if (perPhotoMode) {
+    var r = recalcTotal();
+    if (!r.allFilled || r.sum <= 0) {
+      errorEl.textContent = 'Fill in the amount for every check';
+      errorEl.style.display = 'block';
+      return;
+    }
+    amount = r.sum;
+    amountRaw = autoTotalValueEl.textContent;
+  } else {
+    amountRaw = amountEl.value.trim();
+    amount = parseAmount(amountRaw);
+    if (!amount || amount <= 0) {
+      errorEl.textContent = 'Enter amount. Example: 50000, 50k, 1.5m';
+      errorEl.style.display = 'block';
+      return;
+    }
   }
 
   if (hasApi && selectedPhotos.length > 0) {
