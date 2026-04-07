@@ -139,28 +139,63 @@ h1 { font-size: 20px; font-weight: 600; margin-bottom: 16px; text-align: center;
 .status-icon { font-size: 48px; }
 
 .viewer-wrap {
-  display: none; flex-direction: column; align-items: center;
-  gap: 12px; padding: 8px 0;
+  display: none; flex-direction: column;
+  gap: 16px; padding: 0;
 }
 .viewer-wrap.active { display: flex; }
-.viewer-title { font-size: 18px; font-weight: 600; margin-bottom: 4px; }
-.viewer-gallery { width: 100%; display: flex; flex-direction: column; gap: 10px; align-items: center; }
-.viewer-img {
-  width: 100%; max-width: 500px; border-radius: 12px;
+.viewer-card {
   background: var(--tg-theme-secondary-bg-color, #2a2a4a);
-  cursor: zoom-in; transition: transform 0.2s;
+  border-radius: 12px; overflow: hidden;
 }
-.viewer-img.zoomed { transform: scale(1.8); cursor: zoom-out; z-index: 50; position: relative; }
-.viewer-loading {
-  padding: 40px; text-align: center;
-  color: var(--tg-theme-hint-color, #999); font-size: 15px;
+.viewer-card-header {
+  padding: 14px 16px;
+  font-size: 13px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--tg-theme-hint-color, #888);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
 }
-.viewer-error {
-  padding: 20px; text-align: center;
-  color: #e53935; font-size: 14px;
+.viewer-gallery {
+  display: flex; flex-direction: column; gap: 2px;
+}
+.viewer-img-wrap {
+  position: relative; width: 100%; background: #000;
+}
+.viewer-img-wrap:last-child { border-radius: 0 0 12px 12px; }
+.viewer-img {
+  width: 100%; display: block; cursor: pointer;
+  transition: opacity 0.2s;
+}
+.viewer-img-wrap .viewer-img-num {
+  position: absolute; top: 8px; left: 8px;
+  background: rgba(0,0,0,0.6); color: #fff; border-radius: 6px;
+  padding: 2px 8px; font-size: 11px; font-weight: 600;
 }
 .viewer-counter {
+  padding: 10px 16px; text-align: center;
   font-size: 13px; color: var(--tg-theme-hint-color, #999);
+}
+.viewer-loading {
+  padding: 48px 16px; text-align: center;
+  color: var(--tg-theme-hint-color, #999); font-size: 15px;
+}
+.viewer-loading .spinner {
+  width: 32px; height: 32px; margin: 0 auto 12px;
+  border: 3px solid var(--tg-theme-hint-color, #555);
+  border-top-color: var(--tg-theme-button-color, #3390ec);
+  border-radius: 50%; animation: spin 0.8s linear infinite;
+}
+.viewer-error {
+  padding: 24px 16px; text-align: center;
+  color: #e53935; font-size: 14px;
+}
+.viewer-fullscreen {
+  display: none; position: fixed; inset: 0; z-index: 200;
+  background: rgba(0,0,0,0.95); justify-content: center; align-items: center;
+  cursor: zoom-out;
+}
+.viewer-fullscreen.active { display: flex; }
+.viewer-fullscreen img {
+  max-width: 95vw; max-height: 90vh; object-fit: contain; border-radius: 4px;
 }
 </style>
 </head>
@@ -195,11 +230,19 @@ h1 { font-size: 20px; font-weight: 600; margin-bottom: 16px; text-align: center;
 <div class="empty-state" id="emptyState" style="display:none">No active accounts available</div>
 
 <div class="viewer-wrap" id="viewerWrap">
-  <div class="viewer-title">📋 Check Photos</div>
-  <div class="viewer-counter" id="viewerCounter"></div>
-  <div class="viewer-gallery" id="viewerGallery">
-    <div class="viewer-loading" id="viewerLoading">Loading photos...</div>
+  <div class="viewer-card">
+    <div class="viewer-card-header" id="viewerHeader">Check photo</div>
+    <div class="viewer-gallery" id="viewerGallery"></div>
+    <div class="viewer-loading" id="viewerLoading">
+      <div class="spinner"></div>
+      Loading check...
+    </div>
+    <div class="viewer-counter" id="viewerCounter"></div>
   </div>
+</div>
+
+<div class="viewer-fullscreen" id="viewerFullscreen">
+  <img id="viewerFullImg" src="">
 </div>
 
 <div class="status-overlay" id="statusOverlay">
@@ -214,10 +257,33 @@ tg.ready();
 tg.expand();
 
 (function checkViewMode() {
-  var params = new URLSearchParams(window.location.search);
-  var fileIdsRaw = params.get('file_ids');
-  var viewApi = params.get('api') || '';
-  if (!fileIdsRaw) return;
+  var viewFileIds = [];
+  var viewApi = '';
+
+  // Parse from startapp (t.me/bot/app?startapp=base64)
+  if (tg.initDataUnsafe && tg.initDataUnsafe.start_param) {
+    try {
+      var sp = tg.initDataUnsafe.start_param;
+      while (sp.length % 4) sp += '=';
+      var decoded = atob(sp.replace(/-/g, '+').replace(/_/g, '/'));
+      var segments = decoded.split('|');
+      for (var i = 0; i < segments.length; i++) {
+        var seg = segments[i];
+        if (seg.indexOf('a:') === 0) { viewApi = seg.substring(2); }
+        else if (seg.indexOf('v:') === 0) { viewFileIds = seg.substring(2).split(',').filter(Boolean); }
+      }
+    } catch(e) { console.error('startapp parse error', e); }
+  }
+
+  // Fallback: URL params
+  if (!viewFileIds.length) {
+    var params = new URLSearchParams(window.location.search);
+    var raw = params.get('file_ids');
+    if (raw) viewFileIds = raw.split(',').filter(Boolean);
+    if (!viewApi) viewApi = params.get('api') || '';
+  }
+
+  if (!viewFileIds.length) return;
 
   document.getElementById('content').style.display = 'none';
   document.getElementById('emptyState').style.display = 'none';
@@ -225,38 +291,58 @@ tg.expand();
   wrap.classList.add('active');
   document.querySelector('h1').textContent = '📋 Check';
 
-  var fileIds = fileIdsRaw.split(',').filter(Boolean);
+  var header = document.getElementById('viewerHeader');
+  header.textContent = viewFileIds.length > 1 ? 'Check photos' : 'Check photo';
   var counter = document.getElementById('viewerCounter');
-  if (fileIds.length > 1) counter.textContent = fileIds.length + ' photos';
-
   var gallery = document.getElementById('viewerGallery');
   var loading = document.getElementById('viewerLoading');
+  var fullscreen = document.getElementById('viewerFullscreen');
+  var fullImg = document.getElementById('viewerFullImg');
   var loaded = 0;
   var errors = 0;
 
-  fileIds.forEach(function(fid, idx) {
-    var url = viewApi + '/api/check-photo?file_id=' + encodeURIComponent(fid) +
-              '&init_data=' + encodeURIComponent(tg.initData || '');
+  fullscreen.addEventListener('click', function() { fullscreen.classList.remove('active'); });
+
+  viewFileIds.forEach(function(fid, idx) {
+    var imgUrl = viewApi + '/api/check-photo?file_id=' + encodeURIComponent(fid) +
+                 '&init_data=' + encodeURIComponent(tg.initData || '');
+    var imgWrap = document.createElement('div');
+    imgWrap.className = 'viewer-img-wrap';
     var img = new Image();
     img.className = 'viewer-img';
     img.alt = 'Check ' + (idx + 1);
     img.onload = function() {
       loaded++;
-      if (loaded + errors === fileIds.length) loading.style.display = 'none';
+      if (loaded + errors === viewFileIds.length) {
+        loading.style.display = 'none';
+        if (viewFileIds.length > 1) counter.textContent = loaded + ' of ' + viewFileIds.length + ' photos';
+      }
     };
     img.onerror = function() {
       errors++;
-      img.style.display = 'none';
-      if (loaded + errors === fileIds.length) {
+      imgWrap.style.display = 'none';
+      if (loaded + errors === viewFileIds.length) {
         loading.style.display = 'none';
-        if (errors === fileIds.length) {
-          gallery.innerHTML = '<div class="viewer-error">Failed to load photos</div>';
+        if (errors === viewFileIds.length) {
+          gallery.innerHTML = '<div class="viewer-error">Failed to load check photos</div>';
+        } else if (viewFileIds.length > 1) {
+          counter.textContent = loaded + ' of ' + viewFileIds.length + ' photos';
         }
       }
     };
-    img.addEventListener('click', function() { this.classList.toggle('zoomed'); });
-    img.src = url;
-    gallery.appendChild(img);
+    img.addEventListener('click', function() {
+      fullImg.src = this.src;
+      fullscreen.classList.add('active');
+    });
+    imgWrap.appendChild(img);
+    if (viewFileIds.length > 1) {
+      var num = document.createElement('span');
+      num.className = 'viewer-img-num';
+      num.textContent = (idx + 1) + '/' + viewFileIds.length;
+      imgWrap.appendChild(num);
+    }
+    gallery.appendChild(imgWrap);
+    img.src = imgUrl;
   });
   return true;
 })();
