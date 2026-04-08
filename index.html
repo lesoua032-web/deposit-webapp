@@ -293,19 +293,34 @@ try {
   isWebMode = depParams.get('m') === 'web';
 } catch(e) { console.error('URL params parse error', e); }
 
-if (!accounts.length && tg.initDataUnsafe && tg.initDataUnsafe.start_param) {
+function tryApiFromFullHref() {
+  if (apiUrl) return;
+  var href = window.location.href || '';
+  var m = /[?&#]api=([^&#]+)/.exec(href);
+  if (!m) return;
+  try {
+    apiUrl = decodeURIComponent(m[1].replace(/\+/g, ' ')).trim();
+  } catch (e) {
+    apiUrl = (m[1] || '').trim();
+  }
+}
+
+/** start_param иногда доступен только после ready(); b:/a: из кнопки DEPOSIT ?startapp=… */
+function mergeTelegramStartParam() {
+  if (!tg.initDataUnsafe || !tg.initDataUnsafe.start_param) return;
   try {
     fromStartParam = true;
     var sp = tg.initDataUnsafe.start_param;
     while (sp.length % 4) sp += '=';
     var decoded = atob(sp.replace(/-/g, '+').replace(/_/g, '/'));
     var segments = decoded.split('|');
+    var takeAccRows = accounts.length === 0;
     for (var i = 0; i < segments.length; i++) {
       var seg = segments[i];
       if (seg.indexOf('b:') === 0) { botUsername = seg.substring(2); continue; }
       if (seg.indexOf('a:') === 0) { apiUrl = seg.substring(2); continue; }
       var f = seg.split(',');
-      if (f.length >= 3) {
+      if (takeAccRows && f.length >= 3) {
         accounts.push({
           id: parseInt(f[0]), name: f[1],
           status: f[2] === 'A' ? 'Active' : 'Pending',
@@ -466,8 +481,14 @@ async function loadAccountsFromApi() {
 
 async function bootstrapDepositUi() {
   if (!isDepositMode) return;
-  await loadAccountsFromOptionalJson();
+  try { tg.ready(); } catch (e) {}
+  await new Promise(function(r) { setTimeout(r, 0); });
+  tryApiFromFullHref();
+  mergeTelegramStartParam();
   await waitInitData(2500);
+  tryApiFromFullHref();
+  mergeTelegramStartParam();
+  await loadAccountsFromOptionalJson();
   if (!accounts.length && apiBase()) {
     emptyEl.textContent = 'Загрузка счетов…';
     emptyEl.style.display = 'block';
