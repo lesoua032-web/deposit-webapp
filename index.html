@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
+<!-- Fallback API base (HTTPS ngrok и т.д.), если в URL нет ?api= — иначе мини-апп не сможет загрузить счета -->
+<meta name="deposit-api-base" content="">
 <title>Deposit / Check Viewer</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
@@ -270,6 +272,7 @@ var fromStartParam = false;
 var selectedPhotos = []; // [{file, dataUrl}]
 var hasApi = false;
 var useSendData = false;
+var accountsLoadError = null;
 
 var depParams = new URLSearchParams(window.location.search);
 var isDepositMode = !depParams.get('file_ids');
@@ -278,7 +281,15 @@ try {
   var raw = depParams.get('d');
   if (raw) accounts = JSON.parse(atob(raw));
   botUsername = depParams.get('b') || '';
-  apiUrl = depParams.get('api') || '';
+  var rawApi = depParams.get('api');
+  if (rawApi) {
+    try { apiUrl = decodeURIComponent(rawApi); } catch (e) { apiUrl = rawApi; }
+  }
+  if (!apiUrl) {
+    var metaApi = document.querySelector('meta[name="deposit-api-base"]');
+    var mc = metaApi && metaApi.getAttribute('content');
+    if (mc && String(mc).trim()) apiUrl = String(mc).trim();
+  }
   isWebMode = depParams.get('m') === 'web';
 } catch(e) { console.error('URL params parse error', e); }
 
@@ -335,8 +346,15 @@ function renderAccountUI() {
   if (!accounts.length) {
     contentEl.style.display = 'none';
     emptyEl.style.display = 'block';
-    if (emptyEl.textContent.indexOf('Loading') === -1)
-      emptyEl.textContent = 'No active accounts available';
+    if (accountsLoadError) {
+      emptyEl.textContent = accountsLoadError;
+    } else if (!apiBase()) {
+      emptyEl.textContent = 'Нет адреса API: в BotFather укажи URL с ?api=HTTPS_твой_сервер или заполни в index.html <meta name="deposit-api-base" content="...">';
+    } else if (!tg.initData) {
+      emptyEl.textContent = 'Открой мини-апп только из Telegram (кнопка DEPOSIT). В обычном браузере список счетов недоступен.';
+    } else {
+      emptyEl.textContent = 'Нет активных аккаунтов (или бот на сервере API заблокирован).';
+    }
     return;
   }
   contentEl.style.display = 'block';
@@ -389,8 +407,30 @@ function apiBase() {
   return (apiUrl || '').replace(/\/+$/, '');
 }
 
+async function loadAccountsFromOptionalJson() {
+  if (apiUrl) return;
+  try {
+    var resp = await fetch('./webapp-config.json', { cache: 'no-store' });
+    if (!resp.ok) return;
+    var cfg = await resp.json();
+    var b = cfg.apiBase || cfg.api;
+    if (b && typeof b === 'string' && b.trim()) apiUrl = b.trim();
+  } catch (e) { /* no file */ }
+}
+
+async function waitInitData(maxWaitMs) {
+  var t0 = Date.now();
+  while (Date.now() - t0 < maxWaitMs) {
+    if (tg.initData) return true;
+    await new Promise(function(r) { setTimeout(r, 80); });
+  }
+  return !!tg.initData;
+}
+
 async function loadAccountsFromApi() {
-  if (!apiBase() || !tg.initData) return false;
+  accountsLoadError = null;
+  if (!apiBase()) return false;
+  if (!tg.initData) return false;
   try {
     var resp = await fetch(apiBase() + '/api/deposit-accounts', {
       method: 'POST',
@@ -400,22 +440,40 @@ async function loadAccountsFromApi() {
       },
       body: JSON.stringify({ init_data: tg.initData })
     });
-    var result = await resp.json();
+    var text = await resp.text();
+    var result = {};
+    try { result = JSON.parse(text); } catch (parseErr) {
+      accountsLoadError = 'Сервер API вернул не JSON (проверь ngrok / URL).';
+      console.error('deposit-accounts raw', text.slice(0, 200));
+      return false;
+    }
     if (result.ok && Array.isArray(result.accounts)) {
       accounts = result.accounts;
+      if (accounts.length === 0 && resp.ok)
+        accountsLoadError = null;
       return true;
     }
-  } catch (e) { console.error('deposit-accounts', e); }
-  return false;
+    accountsLoadError = result.error
+      ? ('Ошибка API: ' + result.error)
+      : ('Ошибка загрузки счетов, HTTP ' + resp.status);
+    return false;
+  } catch (e) {
+    console.error('deposit-accounts', e);
+    accountsLoadError = 'Сеть: не удалось связаться с API (ngrok выключен или неверный URL).';
+    return false;
+  }
 }
 
 async function bootstrapDepositUi() {
   if (!isDepositMode) return;
-  if (!accounts.length && apiUrl && tg.initData) {
-    emptyEl.textContent = 'Loading accounts…';
+  await loadAccountsFromOptionalJson();
+  await waitInitData(2500);
+  if (!accounts.length && apiBase()) {
+    emptyEl.textContent = 'Загрузка счетов…';
     emptyEl.style.display = 'block';
     contentEl.style.display = 'none';
-    await loadAccountsFromApi();
+    if (tg.initData) await loadAccountsFromApi();
+    else accountsLoadError = null;
   }
   renderAccountUI();
 }
