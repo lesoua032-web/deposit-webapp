@@ -1,695 +1,840 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<meta http-equiv="Pragma" content="no-cache">
-<!-- Не храни здесь реальный URL репозитория: только BotFather (?api=...) или локальный webapp-config.json (не в git). -->
-<meta name="deposit-api-base" content="">
-<title>Deposit / Check Viewer</title>
-<script src="https://telegram.org/js/telegram-web-app.js"></script>
-<style>
-* { margin: 0; padding: 0; box-sizing: border-box; }
-body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: var(--tg-theme-bg-color, #1a1a2e);
-  color: var(--tg-theme-text-color, #eee);
-  padding: 16px;
-  min-height: 100vh;
-}
-h1 { font-size: 20px; font-weight: 600; margin-bottom: 16px; text-align: center; }
-.section-label {
-  font-size: 13px; font-weight: 600; text-transform: uppercase;
-  color: var(--tg-theme-hint-color, #999); margin: 20px 0 8px; padding-left: 4px;
-}
-.trader-group { margin-bottom: 10px; }
-.trader-header {
-  font-size: 13px; font-weight: 600; padding: 6px 4px;
-  color: var(--tg-theme-hint-color, #999);
-}
-.acc-table {
-  width: 100%; border-collapse: collapse;
-  background: var(--tg-theme-secondary-bg-color, #2a2a4a);
-  border-radius: 10px; overflow: hidden;
-}
-.acc-table th {
-  padding: 8px 12px; font-size: 11px; font-weight: 600;
-  text-transform: uppercase; letter-spacing: 0.5px;
-  color: var(--tg-theme-hint-color, #888);
-  text-align: left; border-bottom: 1px solid rgba(255,255,255,0.06);
-}
-.acc-table th:nth-child(2),
-.acc-table th:nth-child(3) { text-align: center; }
-.acc-table td {
-  padding: 11px 12px; font-size: 14px;
-  border-bottom: 1px solid rgba(255,255,255,0.04);
-  vertical-align: middle;
-}
-.acc-table tr:last-child td { border-bottom: none; }
-.acc-table tbody tr { cursor: pointer; transition: background 0.12s; }
-.acc-table tbody tr:active { background: rgba(255,255,255,0.03); }
-.acc-table tbody tr.selected { background: rgba(51,144,236,0.1); }
-.acc-table tbody tr.selected td:first-child {
-  box-shadow: inset 3px 0 0 var(--tg-theme-button-color, #3390ec);
-}
-.acc-table .td-name {
-  font-weight: 500; white-space: nowrap; overflow: hidden;
-  text-overflow: ellipsis; max-width: 160px;
-}
-.acc-table .td-limit {
-  text-align: center; font-weight: 600; font-size: 13px;
-  color: var(--tg-theme-text-color, #eee);
-}
-.acc-table .td-status { text-align: center; font-size: 13px; }
-.amount-wrap { position: relative; margin-top: 8px; }
-.amount-input {
-  width: 100%; padding: 14px 16px;
-  border: 2px solid var(--tg-theme-secondary-bg-color, #2a2a4a); border-radius: 12px;
-  background: var(--tg-theme-secondary-bg-color, #2a2a4a);
-  color: var(--tg-theme-text-color, #eee); font-size: 17px; font-weight: 500;
-  outline: none; transition: border-color 0.15s;
-}
-.amount-input:focus { border-color: var(--tg-theme-button-color, #3390ec); }
-.amount-input::placeholder { color: var(--tg-theme-hint-color, #aaa); font-weight: 400; }
-.hint { font-size: 12px; color: var(--tg-theme-hint-color, #999); margin-top: 6px; padding-left: 4px; }
-.error-msg { color: #e53935; font-size: 13px; margin-top: 8px; padding-left: 4px; display: none; }
-.empty-state { text-align: center; padding: 40px 20px; color: var(--tg-theme-hint-color, #999); font-size: 15px; }
+"""
+Telegram-бот «Конвертер» — P2P курсы, курс компании, калькулятор.
+Запуск: python bot.py
+"""
 
-.photo-area {
-  margin-top: 8px; border: 2px dashed var(--tg-theme-hint-color, #555); border-radius: 12px;
-  padding: 24px 16px; text-align: center; cursor: pointer; transition: border-color 0.15s;
-  position: relative; overflow: hidden;
-}
-.photo-area.has-photos { border-style: solid; border-color: var(--tg-theme-button-color, #3390ec); padding: 8px; }
-.photo-placeholder { color: var(--tg-theme-hint-color, #999); font-size: 14px; }
-.photo-placeholder .icon { font-size: 32px; display: block; margin-bottom: 8px; }
+import re
+import asyncio
+import logging
+from datetime import datetime, timezone, timedelta
 
-.photo-grid {
-  display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;
-}
-.photo-thumb {
-  position: relative; border-radius: 8px; overflow: hidden;
-  aspect-ratio: 1; background: #000;
-}
-.photo-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.photo-thumb-remove {
-  position: absolute; top: 3px; right: 3px; width: 22px; height: 22px;
-  background: rgba(0,0,0,0.7); color: #fff; border: none; border-radius: 50%;
-  font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center;
-}
-.photo-thumb-num {
-  position: absolute; bottom: 3px; left: 3px;
-  background: rgba(0,0,0,0.7); color: #fff; border-radius: 4px;
-  padding: 1px 5px; font-size: 10px; font-weight: 600;
-}
-.photo-add-more {
-  border-radius: 8px; aspect-ratio: 1;
-  border: 2px dashed var(--tg-theme-hint-color, #555);
-  display: flex; align-items: center; justify-content: center;
-  color: var(--tg-theme-hint-color, #999); font-size: 28px;
-  cursor: pointer; transition: border-color 0.15s;
-}
-.photo-add-more:active { border-color: var(--tg-theme-button-color, #3390ec); }
-.photo-count {
-  margin-top: 6px; text-align: center; font-size: 12px;
-  color: var(--tg-theme-hint-color, #999);
-}
+from aiogram import Bot, Dispatcher, Router, F
+from aiogram.types import (
+    Message,
+    CallbackQuery,
+    InlineKeyboardMarkup,
+    InlineKeyboardButton,
+)
+from aiogram.filters import CommandStart, Command
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import State, StatesGroup
+from aiogram.fsm.storage.memory import MemoryStorage
+from aiogram.enums import ParseMode
+from aiogram.client.default import DefaultBotProperties
 
-.submit-btn {
-  display: none; width: 100%; padding: 14px; margin-top: 20px; border: none; border-radius: 12px;
-  background: var(--tg-theme-button-color, #3390ec);
-  color: var(--tg-theme-button-text-color, #fff);
-  font-size: 16px; font-weight: 600; cursor: pointer; transition: opacity 0.15s;
-}
-.submit-btn:active { opacity: 0.8; }
-.submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+from binance_p2p import (
+    BinanceP2PClient,
+    FIAT_CONFIG,
+    MIN_TRADE_AMOUNT,
+    P2PRateResult,
+    get_google_rate,
+)
 
-.status-overlay {
-  display: none; position: fixed; inset: 0;
-  background: var(--tg-theme-bg-color, #1a1a2e);
-  z-index: 100; justify-content: center; align-items: center; flex-direction: column; gap: 16px;
-}
-.status-overlay.visible { display: flex; }
-.spinner {
-  width: 40px; height: 40px; border: 3px solid var(--tg-theme-hint-color, #555);
-  border-top-color: var(--tg-theme-button-color, #3390ec);
-  border-radius: 50%; animation: spin 0.8s linear infinite;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
-.status-text { font-size: 16px; font-weight: 500; }
-.status-icon { font-size: 48px; }
+# ── Захардкоженные настройки ──────────────────────────────────────────
 
-.viewer-wrap {
-  display: none; flex-direction: column; align-items: center;
-  gap: 12px; padding: 8px 0;
-}
-.viewer-wrap.active { display: flex; }
-.viewer-title { font-size: 18px; font-weight: 600; margin-bottom: 4px; }
-.viewer-gallery { width: 100%; display: flex; flex-direction: column; gap: 10px; align-items: center; }
-.viewer-img {
-  width: 100%; max-width: 500px; border-radius: 12px;
-  background: var(--tg-theme-secondary-bg-color, #2a2a4a);
-  cursor: zoom-in; transition: transform 0.2s;
-}
-.viewer-img.zoomed { transform: scale(1.8); cursor: zoom-out; z-index: 50; position: relative; }
-.viewer-loading {
-  padding: 40px; text-align: center;
-  color: var(--tg-theme-hint-color, #999); font-size: 15px;
-}
-.viewer-error {
-  padding: 20px; text-align: center;
-  color: #e53935; font-size: 14px;
-}
-.viewer-counter {
-  font-size: 13px; color: var(--tg-theme-hint-color, #999);
-}
-</style>
-</head>
-<body>
+FIAT = "INR"
+FIAT_CFG = FIAT_CONFIG[FIAT]
+PAY_METHODS = ["IMPS"]
 
-<h1>📤 Deposit</h1>
+BOT_TOKEN = "8559217051:AAGW8pBlBnWTVpax48NkzhlC2znaIvHMRv0"
+RATE_PASSWORD = "admin"
 
-<div id="content">
-  <div class="section-label">Select account</div>
-  <div id="accountList"></div>
+logging.basicConfig(
+    level=logging.WARNING,
+    format="%(asctime)s  %(levelname)-8s  %(name)s  %(message)s",
+)
+logging.getLogger("aiogram").setLevel(logging.WARNING)
+log = logging.getLogger("bot")
+log.setLevel(logging.INFO)
 
-  <div class="section-label" style="margin-top:24px">Amount</div>
-  <div class="amount-wrap">
-    <input type="text" class="amount-input" id="amountInput"
-           placeholder="e.g. 50000 or 50k" inputmode="text" autocomplete="off">
-  </div>
-  <div class="hint">Numbers, k (thousands), m (millions)</div>
+# ── Глобальные переменные ─────────────────────────────────────────────
 
-  <div class="section-label" id="photoLabel" style="margin-top:24px">Check photos</div>
-  <div class="photo-area" id="photoArea">
-    <div class="photo-placeholder">
-      <span class="icon">📷</span>
-      Tap to select photos
-    </div>
-  </div>
-  <input type="file" id="photoInput" accept="image/*" multiple style="display:none">
+company_rate: float = 109.0
+p2p = BinanceP2PClient(cache_ttl=30)
+router = Router()
 
-  <div class="error-msg" id="errorMsg"></div>
-  <button class="submit-btn" id="submitBtn">📤 SUBMIT DEPOSIT</button>
-</div>
 
-<div class="empty-state" id="emptyState" style="display:none">No active accounts available</div>
+# ── FSM States ────────────────────────────────────────────────────────
 
-<div class="viewer-wrap" id="viewerWrap">
-  <div class="viewer-title">📋 Check Photos</div>
-  <div class="viewer-counter" id="viewerCounter"></div>
-  <div class="viewer-gallery" id="viewerGallery">
-    <div class="viewer-loading" id="viewerLoading">Loading photos...</div>
-  </div>
-</div>
+class RateFSM(StatesGroup):
+    waiting_password = State()
+    waiting_new_rate = State()
 
-<div class="status-overlay" id="statusOverlay">
-  <div class="spinner" id="statusSpinner"></div>
-  <div class="status-icon" id="statusIcon" style="display:none"></div>
-  <div class="status-text" id="statusText">Sending deposit...</div>
-</div>
 
-<script>
-var tg = window.Telegram.WebApp;
-tg.ready();
-tg.expand();
+class CalcModeFSM(StatesGroup):
+    waiting_internal = State()
+    waiting_friends = State()
+    waiting_vika = State()
+    waiting_maja_pct = State()
+    waiting_maja_amounts = State()
 
-(function checkViewMode() {
-  var params = new URLSearchParams(window.location.search);
-  var fileIdsRaw = params.get('file_ids');
-  var viewApi = params.get('api') || '';
-  if (!fileIdsRaw) return;
 
-  document.getElementById('content').style.display = 'none';
-  document.getElementById('emptyState').style.display = 'none';
-  var wrap = document.getElementById('viewerWrap');
-  wrap.classList.add('active');
-  document.querySelector('h1').textContent = '📋 Check';
+# ╔══════════════════════════════════════════════════════════════════════
+# ║  HELPERS
+# ╚══════════════════════════════════════════════════════════════════════
 
-  var fileIds = fileIdsRaw.split(',').filter(Boolean);
-  var counter = document.getElementById('viewerCounter');
-  if (fileIds.length > 1) counter.textContent = fileIds.length + ' photos';
+def fmt_number(n: float, decimals: int = 2) -> str:
+    if n >= 1_000:
+        return f"{n:,.{decimals}f}".replace(",", " ")
+    return f"{n:.{decimals}f}"
 
-  var gallery = document.getElementById('viewerGallery');
-  var loading = document.getElementById('viewerLoading');
-  var loaded = 0;
-  var errors = 0;
 
-  fileIds.forEach(function(fid, idx) {
-    var url = viewApi + '/api/check-photo?file_id=' + encodeURIComponent(fid) +
-              '&init_data=' + encodeURIComponent(tg.initData || '');
-    var img = new Image();
-    img.className = 'viewer-img';
-    img.alt = 'Check ' + (idx + 1);
-    img.onload = function() {
-      loaded++;
-      if (loaded + errors === fileIds.length) loading.style.display = 'none';
-    };
-    img.onerror = function() {
-      errors++;
-      img.style.display = 'none';
-      if (loaded + errors === fileIds.length) {
-        loading.style.display = 'none';
-        if (errors === fileIds.length) {
-          gallery.innerHTML = '<div class="viewer-error">Failed to load photos</div>';
-        }
-      }
-    };
-    img.addEventListener('click', function() { this.classList.toggle('zoomed'); });
-    img.src = url;
-    gallery.appendChild(img);
-  });
-  return true;
-})();
+def fmt_plain(n: float, decimals: int = 3) -> str:
+    """No spaces, no currency symbols — for calculator output.
+    Strips trailing zeros: 2152041.000 → 2152041, 304122.900 → 304122.9"""
+    s = f"{n:.{decimals}f}"
+    if '.' in s:
+        s = s.rstrip('0').rstrip('.')
+    return s
 
-var selectedAccId = null;
-var accounts = [];
-var botUsername = '';
-var apiUrl = '';
-var isWebMode = false;
-var fromStartParam = false;
-var selectedPhotos = []; // [{file, dataUrl}]
-var hasApi = false;
-var useSendData = false;
-var accountsLoadError = null;
 
-var depParams = new URLSearchParams(window.location.search);
-var isDepositMode = !depParams.get('file_ids');
+def fmt_rate(rate: float) -> str:
+    """Format rate: 109.0 → '109', 109.5 → '109.5'."""
+    return fmt_plain(rate, 2)
 
-try {
-  var raw = depParams.get('d');
-  if (raw) accounts = JSON.parse(atob(raw));
-  botUsername = depParams.get('b') || '';
-  var rawApi = depParams.get('api');
-  if (rawApi) {
-    try { apiUrl = decodeURIComponent(rawApi); } catch (e) { apiUrl = rawApi; }
-  }
-  if (!apiUrl) {
-    var metaApi = document.querySelector('meta[name="deposit-api-base"]');
-    var mc = metaApi && metaApi.getAttribute('content');
-    if (mc && String(mc).trim()) apiUrl = String(mc).trim();
-  }
-  isWebMode = depParams.get('m') === 'web';
-} catch(e) { console.error('URL params parse error', e); }
 
-function tryApiFromFullHref() {
-  if (apiUrl) return;
-  var href = window.location.href || '';
-  var m = /[?&#]api=([^&#]+)/.exec(href);
-  if (!m) return;
-  try {
-    apiUrl = decodeURIComponent(m[1].replace(/\+/g, ' ')).trim();
-  } catch (e) {
-    apiUrl = (m[1] || '').trim();
-  }
-}
+async def silent_delete(message: Message):
+    try:
+        await message.delete()
+    except Exception:
+        pass
 
-/** start_param иногда доступен только после ready(); b:/a: из кнопки DEPOSIT ?startapp=… */
-function mergeTelegramStartParam() {
-  if (!tg.initDataUnsafe || !tg.initDataUnsafe.start_param) return;
-  try {
-    fromStartParam = true;
-    var sp = tg.initDataUnsafe.start_param;
-    while (sp.length % 4) sp += '=';
-    var decoded = atob(sp.replace(/-/g, '+').replace(/_/g, '/'));
-    var segments = decoded.split('|');
-    var takeAccRows = accounts.length === 0;
-    for (var i = 0; i < segments.length; i++) {
-      var seg = segments[i];
-      if (seg.indexOf('b:') === 0) { botUsername = seg.substring(2); continue; }
-      if (seg.indexOf('a:') === 0) { apiUrl = seg.substring(2); continue; }
-      var f = seg.split(',');
-      if (takeAccRows && f.length >= 3) {
-        accounts.push({
-          id: parseInt(f[0]), name: f[1],
-          status: f[2] === 'A' ? 'Active' : 'Pending',
-          limit: f[3] ? parseInt(f[3]) : 0,
-          trader: f[4] ? parseInt(f[4]) : 0
-        });
-      }
-    }
-  } catch(e) { console.error('start_param parse error', e); }
-}
 
-function refreshDerived() {
-  hasApi = !!apiUrl;
-  useSendData = !isWebMode && !fromStartParam && !hasApi && !!tg.initData;
-}
+async def edit_or_send(message: Message, state: FSMContext, text: str,
+                       reply_markup=None):
+    """Edit the stored bot message; fall back to sending a new one."""
+    data = await state.get_data()
+    bot_msg_id = data.get("bot_msg_id")
+    try:
+        if bot_msg_id:
+            await message.bot.edit_message_text(
+                text=text,
+                chat_id=message.chat.id,
+                message_id=bot_msg_id,
+                parse_mode=ParseMode.HTML,
+                reply_markup=reply_markup,
+            )
+            return
+    except Exception:
+        pass
+    sent = await message.answer(text, reply_markup=reply_markup)
+    await state.update_data(bot_msg_id=sent.message_id)
 
-var listEl = document.getElementById('accountList');
-var emptyEl = document.getElementById('emptyState');
-var contentEl = document.getElementById('content');
-var amountEl = document.getElementById('amountInput');
-var errorEl = document.getElementById('errorMsg');
-var submitBtnEl = document.getElementById('submitBtn');
-var photoArea = document.getElementById('photoArea');
-var photoInput = document.getElementById('photoInput');
-var overlay = document.getElementById('statusOverlay');
 
-function renderAccountUI() {
-  selectedAccId = null;
-  listEl.innerHTML = '';
-  refreshDerived();
-  if (!hasApi) {
-    document.getElementById('photoLabel').style.display = 'none';
-    photoArea.style.display = 'none';
-  } else {
-    document.getElementById('photoLabel').style.display = '';
-    photoArea.style.display = '';
-  }
-  if (!accounts.length) {
-    contentEl.style.display = 'none';
-    emptyEl.style.display = 'block';
-    if (accountsLoadError) {
-      emptyEl.textContent = accountsLoadError;
-    } else if (!apiBase()) {
-      emptyEl.textContent = 'Нет адреса API: в BotFather укажи URL с ?api=HTTPS_твой_сервер или заполни в index.html <meta name="deposit-api-base" content="...">';
-    } else if (!tg.initData) {
-      emptyEl.textContent = 'Открой мини-апп только из Telegram (кнопка DEPOSIT). В обычном браузере список счетов недоступен.';
-    } else {
-      emptyEl.textContent = 'Нет активных аккаунтов (или бот на сервере API заблокирован).';
-    }
-    return;
-  }
-  contentEl.style.display = 'block';
-  emptyEl.style.display = 'none';
-  emptyEl.textContent = 'No active accounts available';
-  var grouped = {};
-  accounts.forEach(function(acc) {
-    var t = acc.trader || 0;
-    if (!grouped[t]) grouped[t] = [];
-    grouped[t].push(acc);
-  });
-  var traderNums = Object.keys(grouped).sort(function(a,b) { return a - b; });
-  traderNums.forEach(function(tNum) {
-    var group = document.createElement('div');
-    group.className = 'trader-group';
-    var accs = grouped[tNum];
-    var header = document.createElement('div');
-    header.className = 'trader-header';
-    header.textContent = '👨‍💻 Trader #' + tNum + ' (' + accs.length + ')';
-    if (tNum == 0) header.textContent = '📋 Unassigned (' + accs.length + ')';
-    group.appendChild(header);
-    var table = document.createElement('table');
-    table.className = 'acc-table';
-    table.innerHTML = '<thead><tr><th>Account</th><th>Limit</th><th>Sts</th></tr></thead>';
-    var tbody = document.createElement('tbody');
-    accs.forEach(function(acc) {
-      var row = document.createElement('tr');
-      row.dataset.id = acc.id;
-      var limitText = acc.limit ? (acc.limit >= 1000 ? Math.round(acc.limit/1000) + 'k' : acc.limit) : '—';
-      var statusIcon = acc.status === 'Active' ? '✅' : '⛔';
-      row.innerHTML =
-        '<td class="td-name">' + escapeHtml(acc.name) + '</td>' +
-        '<td class="td-limit">' + limitText + '</td>' +
-        '<td class="td-status">' + statusIcon + '</td>';
-      row.addEventListener('click', function() {
-        listEl.querySelectorAll('tr').forEach(function(r) { r.classList.remove('selected'); });
-        row.classList.add('selected');
-        selectedAccId = acc.id;
-        updateButton();
-      });
-      tbody.appendChild(row);
-    });
-    table.appendChild(tbody);
-    group.appendChild(table);
-    listEl.appendChild(group);
-  });
-}
+def normalize_math_symbols(s: str) -> str:
+    """Replace common Unicode math symbols with their ASCII equivalents."""
+    return s.replace('\u2212', '-').replace('\u2013', '-').replace('\u2014', '-').replace('\u00d7', '*').replace('\u2715', '*')
 
-function apiBase() {
-  return (apiUrl || '').replace(/\/+$/, '');
-}
 
-async function loadAccountsFromOptionalJson() {
-  if (apiUrl) return;
-  try {
-    var resp = await fetch('./webapp-config.json', { cache: 'no-store' });
-    if (!resp.ok) return;
-    var cfg = await resp.json();
-    var b = cfg.apiBase || cfg.api;
-    if (b && typeof b === 'string' && b.trim()) apiUrl = b.trim();
-  } catch (e) { /* no file */ }
-}
+def parse_amount(raw: str) -> float | None:
+    """Parse a number from string, handling ₹40 000,00 and ₹40,000.00 formats."""
+    cleaned = normalize_math_symbols(raw).strip().replace("₹", "").replace("\u00a0", "").replace("—", "").replace("─", "").strip()
+    if not cleaned or not any(c.isdigit() for c in cleaned):
+        return None
+    has_comma = "," in cleaned
+    has_dot = "." in cleaned
+    if has_comma and has_dot:
+        cleaned = cleaned.replace(",", "").replace(" ", "")
+    elif has_comma and not has_dot:
+        cleaned = cleaned.replace(" ", "").replace(",", ".")
+    else:
+        cleaned = cleaned.replace(",", "").replace(" ", "")
+    try:
+        val = float(cleaned)
+        return val if val > 0 else None
+    except ValueError:
+        return None
 
-async function waitInitData(maxWaitMs) {
-  var t0 = Date.now();
-  while (Date.now() - t0 < maxWaitMs) {
-    if (tg.initData) return true;
-    await new Promise(function(r) { setTimeout(r, 80); });
-  }
-  return !!tg.initData;
-}
 
-async function loadAccountsFromApi() {
-  accountsLoadError = null;
-  if (!apiBase()) return false;
-  if (!tg.initData) return false;
-  try {
-    var resp = await fetch(apiBase() + '/api/deposit-accounts', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'ngrok-skip-browser-warning': '1'
-      },
-      body: JSON.stringify({ init_data: tg.initData })
-    });
-    var text = await resp.text();
-    var result = {};
-    try { result = JSON.parse(text); } catch (parseErr) {
-      accountsLoadError = 'Сервер API вернул не JSON (проверь ngrok / URL).';
-      console.error('deposit-accounts raw', text.slice(0, 200));
-      return false;
-    }
-    if (result.ok && Array.isArray(result.accounts)) {
-      accounts = result.accounts;
-      if (accounts.length === 0 && resp.ok)
-        accountsLoadError = null;
-      return true;
-    }
-    accountsLoadError = result.error
-      ? ('Ошибка API: ' + result.error)
-      : ('Ошибка загрузки счетов, HTTP ' + resp.status);
-    return false;
-  } catch (e) {
-    console.error('deposit-accounts', e);
-    accountsLoadError = 'Сеть: не удалось связаться с API (ngrok выключен или неверный URL).';
-    return false;
-  }
-}
+def parse_amount_expr(raw: str) -> tuple[float | None, str | None]:
+    """Parse amount that may contain arithmetic, e.g. '2057486-30000'.
+    Returns (final_amount, display_line_or_None)."""
+    cleaned = normalize_math_symbols(raw.strip())
+    m = re.match(r'^([\d\s,._]+)\s*([+\-])\s*([\d\s,._]+)$', cleaned)
+    if m:
+        left = parse_amount(m.group(1))
+        op = m.group(2)
+        right = parse_amount(m.group(3))
+        if left is not None and right is not None:
+            result = left - right if op == '-' else left + right
+            if result > 0:
+                sym = '-' if op == '-' else '+'
+                display = f"{fmt_plain(left)}{sym}{fmt_plain(right)} = {fmt_plain(result)}"
+                return result, display
+    return parse_amount(cleaned), None
 
-async function bootstrapDepositUi() {
-  if (!isDepositMode) return;
-  try { tg.ready(); } catch (e) {}
-  await new Promise(function(r) { setTimeout(r, 0); });
-  tryApiFromFullHref();
-  mergeTelegramStartParam();
-  await waitInitData(2500);
-  tryApiFromFullHref();
-  mergeTelegramStartParam();
-  await loadAccountsFromOptionalJson();
-  if (!accounts.length && apiBase()) {
-    emptyEl.textContent = 'Загрузка счетов…';
-    emptyEl.style.display = 'block';
-    contentEl.style.display = 'none';
-    if (tg.initData) await loadAccountsFromApi();
-    else accountsLoadError = null;
-  }
-  renderAccountUI();
-}
 
-photoArea.addEventListener('click', function() { photoInput.click(); });
 
-photoInput.addEventListener('change', function() {
-  var files = Array.from(photoInput.files);
-  if (!files.length) return;
-  var loaded = 0;
-  files.forEach(function(file) {
-    var reader = new FileReader();
-    reader.onload = function(e) {
-      selectedPhotos.push({ file: file, dataUrl: e.target.result });
-      loaded++;
-      if (loaded === files.length) {
-        renderPhotos();
-        updateButton();
-      }
-    };
-    reader.readAsDataURL(file);
-  });
-  photoInput.value = '';
-});
+def time_footer() -> str:
+    now = datetime.now(timezone.utc)
+    ua = now.astimezone(timezone(timedelta(hours=2)))
+    ind = now.astimezone(timezone(timedelta(hours=5, minutes=30)))
+    return (
+        f"\n🕐 {ua.strftime('%d.%m.%Y')}\n"
+        f"🇺🇦 Ukraine: {ua.strftime('%H:%M:%S')}\n"
+        f"🇮🇳 India: {ind.strftime('%H:%M:%S')}"
+    )
 
-function renderPhotos() {
-  if (selectedPhotos.length === 0) {
-    photoArea.classList.remove('has-photos');
-    photoArea.innerHTML = '<div class="photo-placeholder"><span class="icon">📷</span>Tap to select photos</div>';
-    return;
-  }
-  photoArea.classList.add('has-photos');
-  var html = '<div class="photo-grid">';
-  selectedPhotos.forEach(function(p, idx) {
-    html += '<div class="photo-thumb">' +
-      '<img src="' + p.dataUrl + '">' +
-      '<button class="photo-thumb-remove" data-idx="' + idx + '">✕</button>' +
-      (selectedPhotos.length > 1 ? '<span class="photo-thumb-num">' + (idx + 1) + '</span>' : '') +
-      '</div>';
-  });
-  html += '<div class="photo-add-more" id="addMoreBtn">+</div>';
-  html += '</div>';
-  if (selectedPhotos.length > 1) {
-    html += '<div class="photo-count">' + selectedPhotos.length + ' photos selected</div>';
-  }
-  photoArea.innerHTML = html;
 
-  document.getElementById('addMoreBtn').addEventListener('click', function(ev) {
-    ev.stopPropagation();
-    photoInput.click();
-  });
+# ╔══════════════════════════════════════════════════════════════════════
+# ║  KEYBOARDS
+# ╚══════════════════════════════════════════════════════════════════════
 
-  photoArea.querySelectorAll('.photo-thumb-remove').forEach(function(btn) {
-    btn.addEventListener('click', function(ev) {
-      ev.stopPropagation();
-      selectedPhotos.splice(parseInt(this.dataset.idx), 1);
-      renderPhotos();
-      updateButton();
-    });
-  });
-}
+def main_menu_kb() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="📊 P2P", callback_data="p2p:now")],
+        [InlineKeyboardButton(text="💰 RATE", callback_data="rate:view")],
+        [InlineKeyboardButton(text="🧮 CALCULATOR", callback_data="calc:menu")],
+    ])
 
-function escapeHtml(t) { var d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
 
-function parseAmount(str) {
-  if (!str) return null;
-  str = str.trim().toLowerCase().replace(/,/g, '.');
-  var m = str.match(/^(\d+(?:\.\d+)?)\s*([kmкм]?)$/);
-  if (!m) return null;
-  var num = parseFloat(m[1]);
-  if (isNaN(num) || num <= 0) return null;
-  var suffix = m[2];
-  if (suffix === 'k' || suffix === 'к') num *= 1000;
-  if (suffix === 'm' || suffix === 'м') num *= 1000000;
-  return Math.round(num);
-}
+def back_kb() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="« MENU", callback_data="menu:main")]
+    ])
 
-function updateButton() {
-  var val = amountEl.value.trim();
-  var amountParsed = parseAmount(val);
-  var amountOk = amountParsed && amountParsed > 0;
-  var ready = selectedAccId !== null && amountOk;
-  if (hasApi) ready = ready && selectedPhotos.length > 0;
-  if (ready) {
-    if (useSendData) {
-      tg.MainButton.setText('SUBMIT DEPOSIT');
-      tg.MainButton.show();
-      tg.MainButton.enable();
-    } else {
-      submitBtnEl.style.display = 'block';
-      submitBtnEl.disabled = false;
-    }
-  } else {
-    if (useSendData) tg.MainButton.hide();
-    submitBtnEl.style.display = 'none';
-  }
-}
 
-amountEl.addEventListener('input', function() {
-  var val = amountEl.value.trim();
-  if (val && !parseAmount(val)) {
-    errorEl.textContent = 'Invalid amount. Use numbers: 50000, 50k, 1.5m';
-    errorEl.style.display = 'block';
-  } else if (val && parseAmount(val) === 0) {
-    errorEl.textContent = 'Amount must be greater than 0';
-    errorEl.style.display = 'block';
-  } else {
-    errorEl.style.display = 'none';
-  }
-  updateButton();
-});
+# ╔══════════════════════════════════════════════════════════════════════
+# ║  FORMAT P2P
+# ╚══════════════════════════════════════════════════════════════════════
 
-function showStatus(text, icon) {
-  overlay.classList.add('visible');
-  document.getElementById('statusText').textContent = text;
-  if (icon) {
-    document.getElementById('statusSpinner').style.display = 'none';
-    document.getElementById('statusIcon').style.display = 'block';
-    document.getElementById('statusIcon').textContent = icon;
-  } else {
-    document.getElementById('statusSpinner').style.display = 'block';
-    document.getElementById('statusIcon').style.display = 'none';
-  }
-}
+def fmt_rate_result(r: P2PRateResult, google_rate: float | None = None) -> str:
+    fiat_cfg = FIAT_CONFIG.get(r.fiat, {})
+    symbol = fiat_cfg.get("symbol", r.fiat)
+    flag = fiat_cfg.get("flag", "")
+    spread = abs(r.worst_price - r.best_price)
+    spread_pct = (spread / r.best_price * 100) if r.best_price else 0
+    dec = 2 if r.best_price >= 1 else 6
 
-async function handleSubmit() {
-  if (selectedAccId === null) {
-    errorEl.textContent = 'Please select an account';
-    errorEl.style.display = 'block';
-    return;
-  }
-  var amountRaw = amountEl.value.trim();
-  var amount = parseAmount(amountRaw);
+    google_line = ""
+    if google_rate:
+        google_line = f"📌 <b>GOOGLE:</b>  <code>{fmt_number(google_rate, dec)} {symbol}</code>\n"
 
-  if (!amount || amount <= 0) {
-    errorEl.textContent = 'Enter amount. Example: 50000, 50k, 1.5m';
-    errorEl.style.display = 'block';
-    return;
-  }
+    return (
+        f"{flag} <b>RATE</b>\n"
+        f"<b>{r.fiat} — {r.asset}</b>\n"
+        f"{'─' * 28}\n"
+        f"{google_line}"
+        f"📌 <b>VWAP:</b>  <code>{fmt_number(r.vwap, dec)} {symbol}</code>\n"
+        f"📌 <b>Median:</b>  <code>{fmt_number(r.median_price, dec)} {symbol}</code>\n"
+        f"📌 <b>Average:</b>  <code>{fmt_number(r.simple_avg, dec)} {symbol}</code>\n"
+        f"{'─' * 28}\n"
+        f"🟢 Best price:  <code>{fmt_number(r.best_price, dec)} {symbol}</code>\n"
+        f"🔴 Worst price:  <code>{fmt_number(r.worst_price, dec)} {symbol}</code>\n"
+        f"📊 Margin:  <code>{fmt_number(spread, dec)} {symbol}</code>  "
+        f"({spread_pct:.2f}%)\n"
+        f"{'─' * 28}\n"
+        f"📦 Ads: {r.order_count}\n"
+        f"💰 Total volume: {fmt_number(r.total_volume)} {r.asset}"
+        f"{time_footer()}"
+    )
 
-  if (hasApi && selectedPhotos.length > 0) {
-    submitBtnEl.disabled = true;
-    showStatus('Sending deposit...');
-    try {
-      var fd = new FormData();
-      selectedPhotos.forEach(function(p) { fd.append('photo', p.file); });
-      fd.append('account_id', selectedAccId);
-      fd.append('amount', String(amount));
-      fd.append('amount_display', amountRaw);
-      fd.append('init_data', tg.initData || '');
 
-      var resp = await fetch(apiBase() + '/api/deposit', { method: 'POST', body: fd });
-      var result = await resp.json();
-      if (result.ok) {
-        showStatus('Deposit sent!', '✅');
-        setTimeout(function() { try { tg.close(); } catch(e) {} }, 1500);
-      } else {
-        showStatus('Error: ' + (result.error || 'Unknown'), '❌');
-        setTimeout(function() {
-          overlay.classList.remove('visible');
-          document.getElementById('statusSpinner').style.display = 'block';
-          document.getElementById('statusIcon').style.display = 'none';
-          submitBtnEl.disabled = false;
-        }, 2500);
-      }
-    } catch(e) {
-      showStatus('Network error', '❌');
-      setTimeout(function() {
-        overlay.classList.remove('visible');
-        document.getElementById('statusSpinner').style.display = 'block';
-        document.getElementById('statusIcon').style.display = 'none';
-        submitBtnEl.disabled = false;
-      }, 2500);
-    }
-    return;
-  }
+# ╔══════════════════════════════════════════════════════════════════════
+# ║  MAIN MENU
+# ╚══════════════════════════════════════════════════════════════════════
 
-  if (useSendData) {
-    var data = { account_id: selectedAccId };
-    if (amount && amount > 0) { data.amount = amount; data.amount_display = amountRaw; }
-    tg.sendData(JSON.stringify(data));
-    return;
-  }
+WELCOME_TEXT = "💀💀💀"
 
-  var startParam = 'dep_' + selectedAccId;
-  if (amount && amount > 0) startParam += '_' + amount;
-  var url = 'https://t.me/' + botUsername + '?start=' + startParam;
-  try { tg.openTelegramLink(url); } catch(e) { window.location.href = url; }
-}
 
-submitBtnEl.addEventListener('click', handleSubmit);
+@router.message(CommandStart())
+async def cmd_start(message: Message, state: FSMContext):
+    await state.clear()
+    await message.answer(WELCOME_TEXT, reply_markup=main_menu_kb())
 
-bootstrapDepositUi().then(function() {
-  if (useSendData) tg.MainButton.onClick(handleSubmit);
-});
-</script>
-</body>
-</html>
+
+@router.callback_query(F.data == "menu:main")
+async def cb_main_menu(cb: CallbackQuery, state: FSMContext):
+    await state.clear()
+    await cb.message.edit_text(WELCOME_TEXT, reply_markup=main_menu_kb())
+    await cb.answer()
+
+
+# ╔══════════════════════════════════════════════════════════════════════
+# ║  P2P RATE
+# ╚══════════════════════════════════════════════════════════════════════
+
+@router.callback_query(F.data == "p2p:now")
+async def cb_p2p_now(cb: CallbackQuery):
+    await cb.message.edit_text("⏳ Loading INR — USDT rate...")
+    await cb.answer()
+
+    p2p_task = p2p.get_rates(
+        asset="USDT", fiat=FIAT, trade_type="BUY", pay_methods=PAY_METHODS
+    )
+    google_task = get_google_rate(FIAT)
+    result, google_rate = await asyncio.gather(p2p_task, google_task)
+
+    if result is None:
+        await cb.message.edit_text(
+            "❌ Failed to load data.\nBinance P2P is temporarily unavailable.",
+            reply_markup=back_kb(),
+        )
+        return
+
+    text = fmt_rate_result(result, google_rate)
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🔄 REFRESH", callback_data="p2p:now")],
+        [InlineKeyboardButton(text="« MENU", callback_data="menu:main")],
+    ])
+    await cb.message.edit_text(text, reply_markup=kb)
+
+
+# ╔══════════════════════════════════════════════════════════════════════
+# ║  COMPANY RATE (view / edit)
+# ╚══════════════════════════════════════════════════════════════════════
+
+def rate_view_text() -> str:
+    return (
+        f"💰 <b>Company Rate</b>\n"
+        f"{'─' * 28}\n"
+        f"Current rate: <code>{fmt_rate(company_rate)}</code>"
+    )
+
+
+@router.callback_query(F.data == "rate:view")
+async def cb_rate_view(cb: CallbackQuery):
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="✏️ EDIT", callback_data="rate:edit")],
+        [InlineKeyboardButton(text="« MENU", callback_data="menu:main")],
+    ])
+    await cb.message.edit_text(rate_view_text(), reply_markup=kb)
+    await cb.answer()
+
+
+@router.callback_query(F.data == "rate:edit")
+async def cb_rate_edit(cb: CallbackQuery, state: FSMContext):
+    await cb.message.edit_text("🔒 Enter password:", reply_markup=back_kb())
+    await state.update_data(bot_msg_id=cb.message.message_id)
+    await state.set_state(RateFSM.waiting_password)
+    await cb.answer()
+
+
+@router.message(RateFSM.waiting_password)
+async def handle_rate_password(message: Message, state: FSMContext):
+    await silent_delete(message)
+    if message.text and message.text.strip() == RATE_PASSWORD:
+        await edit_or_send(
+            message, state,
+            f"✅ Access granted.\n\n"
+            f"Current rate: <code>{fmt_rate(company_rate)}</code>\n\n"
+            f"Send new rate:",
+            reply_markup=back_kb(),
+        )
+        await state.set_state(RateFSM.waiting_new_rate)
+    else:
+        await edit_or_send(message, state, "❌ Wrong password.", reply_markup=back_kb())
+        await state.clear()
+
+
+@router.message(RateFSM.waiting_new_rate)
+async def handle_rate_new_value(message: Message, state: FSMContext):
+    await silent_delete(message)
+    global company_rate
+    raw = (message.text or "").strip().replace(",", ".")
+    try:
+        new_rate = float(raw)
+        if new_rate <= 0:
+            raise ValueError
+    except (ValueError, TypeError):
+        await edit_or_send(message, state, "⚠️ Enter a positive number. Example: <code>109.5</code>")
+        return
+
+    old = company_rate
+    company_rate = new_rate
+    await edit_or_send(
+        message, state,
+        f"✅ Rate updated!\n\n"
+        f"Old: <code>{fmt_rate(old)}</code>\n"
+        f"New: <code>{fmt_rate(company_rate)}</code>",
+        reply_markup=back_kb(),
+    )
+    await state.clear()
+
+
+# ╔══════════════════════════════════════════════════════════════════════
+# ║  CALCULATOR — MENU
+# ╚══════════════════════════════════════════════════════════════════════
+
+@router.callback_query(F.data == "calc:menu")
+async def cb_calc_menu(cb: CallbackQuery, state: FSMContext):
+    await state.clear()
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text="📋 INTERNAL", callback_data="calc:internal"),
+            InlineKeyboardButton(text="👥 FRIENDS", callback_data="calc:friends"),
+        ],
+        [
+            InlineKeyboardButton(text="👩 VIKA", callback_data="calc:vika"),
+            InlineKeyboardButton(text="👩 MAJA", callback_data="calc:maja"),
+        ],
+        [InlineKeyboardButton(text="« MENU", callback_data="menu:main")],
+    ])
+    await cb.message.edit_text(
+        f"🧮 <b>Calculator</b>\n"
+        f"Company rate: <code>{fmt_rate(company_rate)}</code>\n\n"
+        f"Select mode:",
+        reply_markup=kb,
+    )
+    await cb.answer()
+
+
+# ╔══════════════════════════════════════════════════════════════════════
+# ║  CALCULATOR — INTERNAL
+# ╚══════════════════════════════════════════════════════════════════════
+
+INTERNAL_KEYWORDS = ["vika", "maja", "friends"]
+
+INTERNAL_HELP = (
+    "📋 <b>INTERNAL</b>\n\n"
+    "Send a text block with entries.\n"
+    "Keywords: <b>Vika</b>, <b>Maja</b>, <b>Friends</b>"
+)
+
+
+@router.callback_query(F.data == "calc:internal")
+async def cb_calc_internal(cb: CallbackQuery, state: FSMContext):
+    await cb.message.edit_text(INTERNAL_HELP, reply_markup=back_kb())
+    await state.update_data(bot_msg_id=cb.message.message_id)
+    await state.set_state(CalcModeFSM.waiting_internal)
+    await cb.answer()
+
+
+def parse_internal(text: str) -> tuple[str, list[tuple[str, float, float, str | None]]]:
+    """Parse INTERNAL text block.
+    Returns (header_line, [(keyword, amount, percent, expr_display), ...])."""
+    results: list[tuple[str, float, float, str | None]] = []
+    raw_lines = text.strip().split("\n")
+
+    header = ""
+    for ln in raw_lines:
+        stripped = ln.strip()
+        if not stripped:
+            continue
+        if stripped.lower() not in INTERNAL_KEYWORDS:
+            header = enrich_date(stripped) if is_date_line(stripped) else stripped
+        break
+
+    i = 0
+    while i < len(raw_lines):
+        line = raw_lines[i].strip().lower()
+        for kw in INTERNAL_KEYWORDS:
+            if kw in line:
+                j = i + 1
+                while j < len(raw_lines):
+                    data_line = normalize_math_symbols(raw_lines[j].strip())
+                    if not data_line:
+                        j += 1
+                        continue
+                    match = re.search(r'(\d[\d\s,._]*(?:\s*[+\-]\s*\d[\d\s,._]*)?)\s+(\d+(?:[.,]\d+)?)\s*%', data_line)
+                    if match:
+                        amt, expr_display = parse_amount_expr(match.group(1))
+                        pct = float(match.group(2).replace(",", "."))
+                        if amt:
+                            results.append((kw.capitalize(), amt, pct, expr_display))
+                    break
+                break
+        i += 1
+    return header, results
+
+
+@router.message(CalcModeFSM.waiting_internal)
+async def handle_internal(message: Message, state: FSMContext):
+    await silent_delete(message)
+    text = message.text or ""
+    header, entries = parse_internal(text)
+
+    if not entries:
+        await edit_or_send(
+            message, state,
+            "⚠️ Could not parse entries.\nMake sure you use keywords: "
+            "<b>Vika</b>, <b>Maja</b>, <b>Friends</b>\n"
+            "with amount and percent on the next line.",
+            reply_markup=back_kb(),
+        )
+        return
+
+    title = f"📋 <b>{header}</b>" if header else "📋 <b>INTERNAL</b>"
+    lines = [
+        title,
+        f"Rate: <code>{fmt_rate(company_rate)}</code>",
+        f"{'─' * 28}",
+    ]
+
+    total = 0.0
+    u_parts: list[str] = []
+    i = 0
+    while i < len(entries):
+        name, _, pct0, _ = entries[i]
+        block: list[str] = [f"\n<b>{name} ({pct0:.0f})</b>\n"]
+        while i < len(entries) and entries[i][0] == name and entries[i][2] == pct0:
+            amount, pct = entries[i][1], entries[i][2]
+            pct_amount = amount * pct / 100
+            result = pct_amount / company_rate
+            total += result
+            u_parts.append(fmt_plain(result))
+            block.append(
+                f"{fmt_plain(amount)}   |   U: {fmt_plain(result)}\n"
+            )
+            i += 1
+        lines.append("".join(block).rstrip("\n"))
+
+    lines.append(f"\n{'-' * 13}")
+    sum_expr = "+".join(u_parts)
+    lines.append(
+        f"<b>Total : {sum_expr} = <code>{fmt_plain(total)}</code></b>"
+    )
+
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🔄 NEW", callback_data="calc:internal")],
+        [InlineKeyboardButton(text="« CALCULATOR", callback_data="calc:menu")],
+    ])
+    await edit_or_send(message, state, "\n".join(lines), reply_markup=kb)
+    await state.clear()
+
+
+# ╔══════════════════════════════════════════════════════════════════════
+# ║  CALCULATOR — FRIENDS (fixed 15%)
+# ╚══════════════════════════════════════════════════════════════════════
+
+FRIENDS_PCT = 15.0
+
+FRIENDS_HELP = (
+    f"👥 <b>FRIENDS</b>  ({FRIENDS_PCT:.0f}%)\n\n"
+    "Первая строка — дата (<code>13.04</code>).\n"
+    "Дальше суммы чеков по строкам.\n"
+    "Опционально: разделитель ——— и итог после него для сверки."
+)
+
+FRIENDS_LINE_SEP = "────────────────────"
+
+
+@router.callback_query(F.data == "calc:friends")
+async def cb_calc_friends(cb: CallbackQuery, state: FSMContext):
+    await cb.message.edit_text(FRIENDS_HELP, reply_markup=back_kb())
+    await state.update_data(bot_msg_id=cb.message.message_id)
+    await state.set_state(CalcModeFSM.waiting_friends)
+    await cb.answer()
+
+
+WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+
+
+def is_date_line(s: str) -> bool:
+    """Check if line looks like a date (17.02, 17.02.2026, 17.02 - Tuesday)."""
+    return bool(re.match(r'^\d{1,2}\.\d{2}(?:\.\d{2,4})?(?:\s|$)', s))
+
+
+def enrich_date(s: str) -> str:
+    """Turn '17.02' into '17.02 - Wednesday'. Pass through if day already present."""
+    s = s.strip()
+    m = re.match(r'^(\d{1,2})\.(\d{2})(?:\.(\d{2,4}))?$', s)
+    if not m:
+        return s
+    day, month = int(m.group(1)), int(m.group(2))
+    year = int(m.group(3)) if m.group(3) else datetime.now().year
+    if year < 100:
+        year += 2000
+    try:
+        dt = datetime(year, month, day)
+        return f"{s} - {WEEKDAYS[dt.weekday()]}"
+    except (ValueError, IndexError):
+        return s
+
+
+def fmt_friends_date_header(header: str) -> str:
+    """FRIENDS title: '07.04 - Tuesday' → '07.04 (Tuesday)'; '13.04' → '13.04 (Monday)'."""
+    s = header.strip()
+    m = re.match(r'^(\d{1,2}\.\d{2})(?:\.\d{2,4})?\s*-\s*([A-Za-z]+)\s*$', s)
+    if m:
+        return f"{m.group(1)} ({m.group(2)})"
+    m2 = re.match(r'^(\d{1,2})\.(\d{2})(?:\.(\d{2,4}))?$', s)
+    if m2:
+        day, month = int(m2.group(1)), int(m2.group(2))
+        year = int(m2.group(3)) if m2.group(3) else datetime.now().year
+        if m2.group(3):
+            if year < 100:
+                year += 2000
+        try:
+            dt = datetime(year, month, day)
+            return f"{m2.group(1)}.{m2.group(2)} ({WEEKDAYS[dt.weekday()]})"
+        except (ValueError, IndexError):
+            pass
+    return s
+
+
+def parse_friends(text: str) -> tuple[str, list[float], float | None]:
+    """Parse FRIENDS input. Separator (———) splits checks from total.
+    No separator = all numbers are checks, no total."""
+    raw_lines = text.strip().split("\n")
+    header = ""
+    before_sep: list[float] = []
+    after_sep: list[float] = []
+    found_sep = False
+
+    for ln in raw_lines:
+        stripped = ln.strip()
+        if not stripped:
+            continue
+        if all(c in "—─-=" for c in stripped) and len(stripped) >= 3:
+            found_sep = True
+            continue
+        if not header and is_date_line(stripped):
+            header = enrich_date(stripped)
+            continue
+        amt = parse_amount(stripped)
+        if amt is not None:
+            if found_sep:
+                after_sep.append(amt)
+            else:
+                before_sep.append(amt)
+        elif not before_sep and not header:
+            header = stripped
+
+    if found_sep and after_sep:
+        return header, before_sep, after_sep[0]
+    # No separator — all numbers are checks, no total
+    return header, before_sep, None
+
+
+@router.message(CalcModeFSM.waiting_friends)
+async def handle_friends(message: Message, state: FSMContext):
+    await silent_delete(message)
+    text = message.text or ""
+    header, checks, stated_total = parse_friends(text)
+
+    if not checks:
+        await edit_or_send(
+            message, state,
+            "⚠️ Send at least 1 number.",
+            reply_markup=back_kb(),
+        )
+        return
+
+    pct = FRIENDS_PCT
+    mult = 1 - pct / 100
+    p = fmt_plain
+
+    lines: list[str] = []
+    if header:
+        lines.append(f"🗓 <b>{fmt_friends_date_header(header)}</b>")
+        lines.append("")
+    else:
+        lines.append("👥 <b>FRIENDS</b>")
+        lines.append("")
+
+    check_results: list[float] = []
+    for i, amt in enumerate(checks, start=1):
+        after = amt * mult
+        r = after / company_rate
+        check_results.append(r)
+        lines.append(
+            f"{i}. <code>{p(amt, 2)}</code>   |   U: <code>{p(r)}</code>"
+        )
+
+    sum_checks = sum(checks)
+    sum_results = sum(check_results)
+    lines.append(FRIENDS_LINE_SEP)
+    lines.append(
+        f"V. <code>{p(sum_checks, 2)}</code>   |   U: <code>{p(sum_results)}</code>"
+    )
+
+    if stated_total is not None:
+        settle_after = stated_total * mult
+        settle_result = settle_after / company_rate
+        lines.append("")
+        lines.append(
+            f"⚖ <code>{p(stated_total, 2)}</code>   |   U: <code>{p(settle_result)}</code>"
+        )
+
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🔄 NEW", callback_data="calc:friends")],
+        [InlineKeyboardButton(text="« CALCULATOR", callback_data="calc:menu")],
+    ])
+    await edit_or_send(message, state, "\n".join(lines), reply_markup=kb)
+    await state.clear()
+
+
+# ╔══════════════════════════════════════════════════════════════════════
+# ║  CALCULATOR — VIKA (fixed 18%)
+# ╚══════════════════════════════════════════════════════════════════════
+
+VIKA_PCT = 18.0
+
+VIKA_HELP = (
+    f"👩 <b>VIKA</b>  ({VIKA_PCT:.0f}%)\n\n"
+    "Send amounts, one per line."
+)
+
+
+@router.callback_query(F.data == "calc:vika")
+async def cb_calc_vika(cb: CallbackQuery, state: FSMContext):
+    await cb.message.edit_text(VIKA_HELP, reply_markup=back_kb())
+    await state.update_data(bot_msg_id=cb.message.message_id)
+    await state.set_state(CalcModeFSM.waiting_vika)
+    await cb.answer()
+
+
+@router.message(CalcModeFSM.waiting_vika)
+async def handle_vika(message: Message, state: FSMContext):
+    await silent_delete(message)
+    text = message.text or ""
+    entries: list[tuple[float, str | None]] = []
+    for line in text.strip().split("\n"):
+        amt, expr = parse_amount_expr(line)
+        if amt is not None:
+            entries.append((amt, expr))
+
+    if not entries:
+        await edit_or_send(message, state, "⚠️ No valid amounts found. Send numbers, one per line.")
+        return
+
+    multiplier = 1 - VIKA_PCT / 100
+    lines: list[str] = []
+
+    for amt, expr in entries:
+        after_pct = amt * multiplier
+        r = after_pct / company_rate
+        entry = ""
+        if expr:
+            entry += f"{expr}\n"
+        entry += (
+            f"{fmt_plain(amt)}-{VIKA_PCT:.0f}% = {fmt_plain(after_pct)}\n"
+            f"{fmt_plain(after_pct)}/{fmt_rate(company_rate)} = <code>{fmt_plain(r)}</code>"
+        )
+        lines.append(entry)
+
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🔄 NEW", callback_data="calc:vika")],
+        [InlineKeyboardButton(text="« CALCULATOR", callback_data="calc:menu")],
+    ])
+    await edit_or_send(message, state, "\n".join(lines), reply_markup=kb)
+    await state.clear()
+
+
+# ╔══════════════════════════════════════════════════════════════════════
+# ║  CALCULATOR — MAJA (custom %)
+# ╚══════════════════════════════════════════════════════════════════════
+
+@router.callback_query(F.data == "calc:maja")
+async def cb_calc_maja(cb: CallbackQuery, state: FSMContext):
+    await cb.message.edit_text(
+        "👩 <b>MAJA</b>\n\nEnter percent (e.g. <code>15</code>):",
+        reply_markup=back_kb(),
+    )
+    await state.update_data(bot_msg_id=cb.message.message_id)
+    await state.set_state(CalcModeFSM.waiting_maja_pct)
+    await cb.answer()
+
+
+@router.message(CalcModeFSM.waiting_maja_pct)
+async def handle_maja_pct(message: Message, state: FSMContext):
+    await silent_delete(message)
+    raw = (message.text or "").strip().replace(",", ".").replace("%", "")
+    try:
+        pct = float(raw)
+        if pct <= 0 or pct >= 100:
+            raise ValueError
+    except (ValueError, TypeError):
+        await edit_or_send(message, state, "⚠️ Enter a valid percent (1-99). Example: <code>15</code>")
+        return
+
+    await state.update_data(maja_pct=pct)
+    await edit_or_send(
+        message, state,
+        f"👩 <b>MAJA</b>  ({pct:.0f}%)\n\n"
+        f"Send amounts, one per line.",
+        reply_markup=back_kb(),
+    )
+    await state.set_state(CalcModeFSM.waiting_maja_amounts)
+
+
+@router.message(CalcModeFSM.waiting_maja_amounts)
+async def handle_maja_amounts(message: Message, state: FSMContext):
+    await silent_delete(message)
+    data = await state.get_data()
+    pct = data.get("maja_pct", 15)
+
+    text = message.text or ""
+    entries: list[tuple[float, str | None]] = []
+    for line in text.strip().split("\n"):
+        amt, expr = parse_amount_expr(line)
+        if amt is not None:
+            entries.append((amt, expr))
+
+    if not entries:
+        await edit_or_send(message, state, "⚠️ No valid amounts found. Send numbers, one per line.")
+        return
+
+    multiplier = 1 - pct / 100
+    lines: list[str] = []
+
+    for amt, expr in entries:
+        after_pct = amt * multiplier
+        r = after_pct / company_rate
+        entry = ""
+        if expr:
+            entry += f"{expr}\n"
+        entry += (
+            f"{fmt_plain(amt)}-{pct:.0f}% = {fmt_plain(after_pct)}\n"
+            f"{fmt_plain(after_pct)}/{fmt_rate(company_rate)} = <code>{fmt_plain(r)}</code>"
+        )
+        lines.append(entry)
+
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🔄 NEW", callback_data="calc:maja")],
+        [InlineKeyboardButton(text="« CALCULATOR", callback_data="calc:menu")],
+    ])
+    await edit_or_send(message, state, "\n".join(lines), reply_markup=kb)
+    await state.clear()
+
+
+# ╔══════════════════════════════════════════════════════════════════════
+# ║  DIAGNOSTICS
+# ╚══════════════════════════════════════════════════════════════════════
+
+@router.message(Command("test"))
+async def cmd_test(message: Message):
+    import traceback
+    lines = ["<b>DIAGNOSTICS</b>\n"]
+    try:
+        result = await p2p.get_rates(
+            asset="USDT", fiat="INR", trade_type="BUY", pay_methods=["IMPS"]
+        )
+        lines.append("Steps: " + " → ".join(p2p._last_debug))
+        if result:
+            lines.append(
+                f"\nOK! Orders: {result.order_count}, "
+                f"VWAP: {result.vwap:.2f}, "
+                f"Best: {result.best_price:.2f}"
+            )
+        else:
+            lines.append("\n<b>Result: None</b>")
+    except Exception as e:
+        lines.append("Steps: " + " → ".join(p2p._last_debug))
+        tb = traceback.format_exc()
+        lines.append(f"\n<b>ERROR:</b>\n<code>{tb[-800:]}</code>")
+
+    lines.append(f"\nCompany rate: {fmt_rate(company_rate)}")
+    await message.answer("\n".join(lines))
+
+
+# ╔══════════════════════════════════════════════════════════════════════
+# ║  STARTUP
+# ╚══════════════════════════════════════════════════════════════════════
+
+async def main():
+    bot = Bot(
+        token=BOT_TOKEN,
+        default=DefaultBotProperties(parse_mode=ParseMode.HTML),
+    )
+    dp = Dispatcher(storage=MemoryStorage())
+    dp.include_router(router)
+
+    log.info("Bot starting...")
+    await bot.delete_webhook(drop_pending_updates=True)
+    await dp.start_polling(bot)
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
