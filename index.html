@@ -474,7 +474,7 @@ async def handle_internal(message: Message, state: FSMContext):
             total += result
             u_parts.append(fmt_plain(result))
             block.append(
-                f"{fmt_plain(amount)}   |   U: {fmt_plain(result)}\n"
+                f"<code>{fmt_plain(amount)}</code>   |   U: <code>{fmt_plain(result)}</code>\n"
             )
             i += 1
         lines.append("".join(block).rstrip("\n"))
@@ -502,8 +502,7 @@ FRIENDS_PCT = 15.0
 FRIENDS_HELP = (
     f"👥 <b>FRIENDS</b>  ({FRIENDS_PCT:.0f}%)\n\n"
     "Первая строка — дата (<code>13.04</code>).\n"
-    "Дальше суммы чеков по строкам.\n"
-    "Опционально: разделитель ——— и итог после него для сверки."
+    "Дальше суммы чеков по строкам."
 )
 
 FRIENDS_LINE_SEP = "────────────────────"
@@ -601,7 +600,7 @@ def parse_friends(text: str) -> tuple[str, list[float], float | None]:
 async def handle_friends(message: Message, state: FSMContext):
     await silent_delete(message)
     text = message.text or ""
-    header, checks, stated_total = parse_friends(text)
+    header, checks, _ = parse_friends(text)
 
     if not checks:
         await edit_or_send(
@@ -638,14 +637,6 @@ async def handle_friends(message: Message, state: FSMContext):
     lines.append(
         f"V. <code>{p(sum_checks, 2)}</code>   |   U: <code>{p(sum_results)}</code>"
     )
-
-    if stated_total is not None:
-        settle_after = stated_total * mult
-        settle_result = settle_after / company_rate
-        lines.append("")
-        lines.append(
-            f"⚖ <code>{p(stated_total, 2)}</code>   |   U: <code>{p(settle_result)}</code>"
-        )
 
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="🔄 NEW", callback_data="calc:friends")],
