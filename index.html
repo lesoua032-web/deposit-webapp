@@ -293,6 +293,25 @@ try {
   isWebMode = depParams.get('m') === 'web';
 } catch(e) { console.error('URL params parse error', e); }
 
+function normalizeAccountStatus(st) {
+  var s = String(st || '').trim();
+  if (!s) return 'Active';
+  var u = s.toLowerCase();
+  if (u === 'active' || u === 'a') return 'Active';
+  if (u === 'pending' || u === 'p') return 'Pending';
+  if (u === 'inactive' || u === 'not active' || u === 'n') return 'Inactive';
+  // default: treat unknown as not-depositable
+  return 'Inactive';
+}
+
+function statusIconForAccount(acc) {
+  var st = normalizeAccountStatus(acc && acc.status);
+  if (st === 'Active') return '✅';
+  // Pending: явный красный маркер + "!" (Inactive оставляем как было: ❌)
+  if (st === 'Pending') return '🔴!';
+  return '❌';
+}
+
 function tryApiFromFullHref() {
   if (apiUrl) return;
   var href = window.location.href || '';
@@ -321,9 +340,14 @@ function mergeTelegramStartParam() {
       if (seg.indexOf('a:') === 0) { apiUrl = seg.substring(2); continue; }
       var f = seg.split(',');
       if (takeAccRows && f.length >= 3) {
+        var st = (f[2] || '').toUpperCase();
+        var status = 'Pending';
+        if (st === 'A') status = 'Active';
+        else if (st === 'N') status = 'Inactive';
+        else if (st === 'P') status = 'Pending'; // legacy links may use P for "not Active"
         accounts.push({
           id: parseInt(f[0]), name: f[1],
-          status: f[2] === 'A' ? 'Active' : 'Pending',
+          status: status,
           limit: f[3] ? parseInt(f[3]) : 0,
           trader: f[4] ? parseInt(f[4]) : 0
         });
@@ -368,13 +392,13 @@ function renderAccountUI() {
     } else if (!tg.initData) {
       emptyEl.textContent = 'Открой мини-апп только из Telegram (кнопка DEPOSIT). В обычном браузере список счетов недоступен.';
     } else {
-      emptyEl.textContent = 'Нет активных аккаунтов (или бот на сервере API заблокирован).';
+      emptyEl.textContent = 'Нет счетов для отображения (или бот на сервере API заблокирован).';
     }
     return;
   }
   contentEl.style.display = 'block';
   emptyEl.style.display = 'none';
-  emptyEl.textContent = 'No active accounts available';
+  emptyEl.textContent = 'No accounts available';
   var grouped = {};
   accounts.forEach(function(acc) {
     var t = acc.trader || 0;
@@ -398,13 +422,27 @@ function renderAccountUI() {
     accs.forEach(function(acc) {
       var row = document.createElement('tr');
       row.dataset.id = acc.id;
+      var st = normalizeAccountStatus(acc && acc.status);
       var limitText = acc.limit ? (acc.limit >= 1000 ? Math.round(acc.limit/1000) + 'k' : acc.limit) : '—';
-      var statusIcon = acc.status === 'Active' ? '✅' : '⛔';
+      var statusIcon = statusIconForAccount(acc);
       row.innerHTML =
         '<td class="td-name">' + escapeHtml(acc.name) + '</td>' +
         '<td class="td-limit">' + limitText + '</td>' +
         '<td class="td-status">' + statusIcon + '</td>';
       row.addEventListener('click', function() {
+        if (st !== 'Active') {
+          listEl.querySelectorAll('tr').forEach(function(r) { r.classList.remove('selected'); });
+          selectedAccId = null;
+          if (st === 'Pending') {
+            errorEl.textContent = 'Этот счёт Pending — депозит сюда сейчас нельзя (нужен Active).';
+          } else {
+            errorEl.textContent = 'Этот счёт Not Active — депозит сюда нельзя.';
+          }
+          errorEl.style.display = 'block';
+          updateButton();
+          return;
+        }
+        errorEl.style.display = 'none';
         listEl.querySelectorAll('tr').forEach(function(r) { r.classList.remove('selected'); });
         row.classList.add('selected');
         selectedAccId = acc.id;
@@ -501,23 +539,62 @@ async function bootstrapDepositUi() {
 
 photoArea.addEventListener('click', function() { photoInput.click(); });
 
+/** Копия Blob, не привязанная к input — в Telegram WebView после input.value='' File часто становится пустым. */
+function stabilizeFile(file) {
+  try {
+    if (!file || !file.size) return file;
+    var name = file.name || 'check.jpg';
+    var mime = file.type || 'image/jpeg';
+    var blob = file.slice(0, file.size, mime);
+    return new File([blob], name, { type: mime, lastModified: file.lastModified || Date.now() });
+  } catch (e) {
+    return file;
+  }
+}
+
+function fileFromDataUrl(dataUrl, name) {
+  try {
+    var parts = dataUrl.split(',');
+    var mime = (parts[0].match(/:(.*?);/) || [])[1] || 'image/jpeg';
+    var bin = atob(parts[1]);
+    var len = bin.length;
+    var arr = new Uint8Array(len);
+    for (var i = 0; i < len; i++) arr[i] = bin.charCodeAt(i);
+    return new File([arr], name || 'check.jpg', { type: mime });
+  } catch (e) {
+    return null;
+  }
+}
+
 photoInput.addEventListener('change', function() {
   var files = Array.from(photoInput.files);
   if (!files.length) return;
-  var loaded = 0;
+  var total = files.length;
+  var done = 0;
+  function finishOne() {
+    done++;
+    if (done === total) {
+      photoInput.value = '';
+      renderPhotos();
+      updateButton();
+    }
+  }
   files.forEach(function(file) {
+    var stable = stabilizeFile(file);
     var reader = new FileReader();
     reader.onload = function(e) {
-      selectedPhotos.push({ file: file, dataUrl: e.target.result });
-      loaded++;
-      if (loaded === files.length) {
-        renderPhotos();
-        updateButton();
-      }
+      selectedPhotos.push({ file: stable, dataUrl: e.target.result });
+      finishOne();
     };
-    reader.readAsDataURL(file);
+    reader.onerror = function() {
+      finishOne();
+    };
+    try {
+      reader.readAsDataURL(stable);
+    } catch (e) {
+      finishOne();
+    }
   });
-  photoInput.value = '';
 });
 
 function renderPhotos() {
@@ -576,7 +653,12 @@ function updateButton() {
   var val = amountEl.value.trim();
   var amountParsed = parseAmount(val);
   var amountOk = amountParsed && amountParsed > 0;
-  var ready = selectedAccId !== null && amountOk;
+  var accOk = false;
+  if (selectedAccId !== null) {
+    var sel = accounts.find(function(a) { return a && a.id === selectedAccId; });
+    accOk = !!sel && normalizeAccountStatus(sel.status) === 'Active';
+  }
+  var ready = accOk && amountOk;
   if (hasApi) ready = ready && selectedPhotos.length > 0;
   if (ready) {
     if (useSendData) {
@@ -626,6 +708,17 @@ async function handleSubmit() {
     errorEl.style.display = 'block';
     return;
   }
+  var selAcc = accounts.find(function(a) { return a && a.id === selectedAccId; });
+  var st = normalizeAccountStatus(selAcc && selAcc.status);
+  if (st !== 'Active') {
+    if (st === 'Pending') {
+      errorEl.textContent = 'This account is Pending — deposits are disabled until trader activates it.';
+    } else {
+      errorEl.textContent = 'This account is Not Active — deposits are disabled.';
+    }
+    errorEl.style.display = 'block';
+    return;
+  }
   var amountRaw = amountEl.value.trim();
   var amount = parseAmount(amountRaw);
 
@@ -636,18 +729,33 @@ async function handleSubmit() {
   }
 
   if (hasApi && selectedPhotos.length > 0) {
+    var photoFiles = selectedPhotos.map(function(p) {
+      var f = p.file;
+      if (f && f.size > 0) return f;
+      if (p.dataUrl && p.dataUrl.indexOf('data:') === 0) {
+        var fb = fileFromDataUrl(p.dataUrl, (f && f.name) || 'check.jpg');
+        if (fb && fb.size > 0) return fb;
+      }
+      return null;
+    }).filter(function(x) { return !!x; });
+    if (!photoFiles.length) {
+      errorEl.textContent = 'Не удалось прочитать фото. Выберите чек ещё раз (в Telegram откройте мини-апп с кнопки DEPOSIT).';
+      errorEl.style.display = 'block';
+      return;
+    }
     submitBtnEl.disabled = true;
-    showStatus('Sending deposit...');
+    showStatus('Отправка… (при нескольких чеках подождите очередь)');
     try {
       var fd = new FormData();
-      selectedPhotos.forEach(function(p) { fd.append('photo', p.file); });
+      photoFiles.forEach(function(f) { fd.append('photo', f); });
       fd.append('account_id', selectedAccId);
       fd.append('amount', String(amount));
       fd.append('amount_display', amountRaw);
       fd.append('init_data', tg.initData || '');
 
       var resp = await fetch(apiBase() + '/api/deposit', { method: 'POST', body: fd });
-      var result = await resp.json();
+      var result = {};
+      try { result = await resp.json(); } catch (je) { result = {}; }
       if (result.ok) {
         showStatus('Deposit sent!', '✅');
         setTimeout(function() { try { tg.close(); } catch(e) {} }, 1500);
