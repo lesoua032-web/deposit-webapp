@@ -285,6 +285,7 @@ try {
   if (rawApi) {
     try { apiUrl = decodeURIComponent(rawApi); } catch (e) { apiUrl = rawApi; }
   }
+  window.targetChatId = depParams.get('c') || '';
   if (!apiUrl) {
     var metaApi = document.querySelector('meta[name="deposit-api-base"]');
     var mc = metaApi && metaApi.getAttribute('content');
@@ -338,6 +339,7 @@ function mergeTelegramStartParam() {
       var seg = segments[i];
       if (seg.indexOf('b:') === 0) { botUsername = seg.substring(2); continue; }
       if (seg.indexOf('a:') === 0) { apiUrl = seg.substring(2); continue; }
+      if (seg.indexOf('c:') === 0) { window.targetChatId = seg.substring(2); continue; }
       var f = seg.split(',');
       if (takeAccRows && f.length >= 3) {
         var st = (f[2] || '').toUpperCase();
@@ -491,7 +493,7 @@ async function loadAccountsFromApi() {
         'Content-Type': 'application/json',
         'ngrok-skip-browser-warning': '1'
       },
-      body: JSON.stringify({ init_data: tg.initData })
+      body: JSON.stringify({ init_data: tg.initData, chat_id: window.targetChatId || '' })
     });
     var text = await resp.text();
     var result = {};
