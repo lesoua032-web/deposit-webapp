@@ -528,8 +528,9 @@ async function bootstrapDepositUi() {
   await waitInitData(2500);
   tryApiFromFullHref();
   mergeTelegramStartParam();
-  await loadAccountsFromOptionalJson();
-  if (!accounts.length && apiBase()) {
+  // Если есть адрес API, всегда пробуем загрузить актуальный (отфильтрованный сервером) список,
+  // даже если в ссылке (start_param) уже были какие-то счета. Это исключает утечку данных.
+  if (apiBase()) {
     emptyEl.textContent = 'Загрузка счетов…';
     emptyEl.style.display = 'block';
     contentEl.style.display = 'none';
