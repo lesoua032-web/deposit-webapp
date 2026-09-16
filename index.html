@@ -77,25 +77,63 @@ h1 { font-size: 20px; font-weight: 600; margin-bottom: 16px; text-align: center;
 .empty-state { text-align: center; padding: 40px 20px; color: var(--tg-theme-hint-color, #999); font-size: 15px; }
 
 .photo-area {
-  margin-top: 8px; border: 2px dashed var(--tg-theme-hint-color, #555); border-radius: 12px;
-  padding: 24px 16px; text-align: center; cursor: pointer; transition: border-color 0.15s;
-  position: relative; overflow: hidden;
+  margin-top: 8px; border: 2px dashed rgba(51, 144, 236, 0.4); border-radius: 14px;
+  padding: 24px 16px; text-align: center; cursor: pointer;
+  background: var(--tg-theme-secondary-bg-color, #2a2a4a);
+  transition: all 0.2s ease; position: relative; overflow: hidden;
 }
-.photo-area.has-photos { border-style: solid; border-color: var(--tg-theme-button-color, #3390ec); padding: 8px; }
-.photo-placeholder { color: var(--tg-theme-hint-color, #999); font-size: 14px; }
-.photo-placeholder .icon { font-size: 32px; display: block; margin-bottom: 8px; }
+.photo-area:active {
+  transform: scale(0.985);
+  border-color: var(--tg-theme-button-color, #3390ec);
+  background: rgba(51, 144, 236, 0.08);
+}
+.photo-area.has-photos {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 0; background: #000;
+}
+.photo-placeholder {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+}
+.photo-icon-badge {
+  width: 52px; height: 52px; border-radius: 50%;
+  background: rgba(51, 144, 236, 0.12);
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 2px; transition: transform 0.2s ease;
+}
+.photo-area:active .photo-icon-badge { transform: scale(1.08); }
+.photo-title {
+  font-size: 15px; font-weight: 600;
+  color: var(--tg-theme-text-color, #eee);
+}
+.photo-sub {
+  font-size: 13px;
+  color: var(--tg-theme-hint-color, #888);
+}
 
 .photo-single {
-  position: relative; border-radius: 8px; overflow: hidden;
-  max-height: 240px; background: #000;
+  position: relative; border-radius: 14px; overflow: hidden;
+  max-height: 280px; background: #0d0d18;
   display: flex; align-items: center; justify-content: center;
 }
-.photo-single img { width: 100%; max-height: 240px; object-fit: contain; display: block; }
+.photo-single img { width: 100%; max-height: 280px; object-fit: contain; display: block; }
 .photo-thumb-remove {
-  position: absolute; top: 6px; right: 6px; width: 26px; height: 26px;
-  background: rgba(0,0,0,0.75); color: #fff; border: none; border-radius: 50%;
-  font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center;
-  z-index: 2;
+  position: absolute; top: 10px; right: 10px; width: 32px; height: 32px;
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  background: rgba(0, 0, 0, 0.65); color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.25); border-radius: 50%;
+  font-size: 15px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  z-index: 2; transition: background 0.15s ease, transform 0.15s ease;
+}
+.photo-thumb-remove:active {
+  background: rgba(229, 57, 53, 0.85); transform: scale(0.9);
+}
+.photo-pill {
+  position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  background: rgba(0, 0, 0, 0.65); border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 20px; padding: 5px 12px; font-size: 12px; font-weight: 500;
+  color: #fff; display: flex; align-items: center; gap: 6px; white-space: nowrap;
+  pointer-events: none;
 }
 
 .submit-btn {
@@ -166,8 +204,14 @@ h1 { font-size: 20px; font-weight: 600; margin-bottom: 16px; text-align: center;
   <div class="section-label" id="photoLabel" style="margin-top:24px">Check photo</div>
   <div class="photo-area" id="photoArea">
     <div class="photo-placeholder">
-      <span class="icon">📷</span>
-      Tap to select photo
+      <div class="photo-icon-badge">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--tg-theme-button-color, #3390ec)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+          <circle cx="12" cy="13" r="4"></circle>
+        </svg>
+      </div>
+      <div class="photo-title">Attach Check Photo</div>
+      <div class="photo-sub">Tap to select from gallery or camera</div>
     </div>
   </div>
   <input type="file" id="photoInput" accept="image/*" style="display:none">
@@ -576,7 +620,16 @@ photoInput.addEventListener('change', function() {
 function renderPhotos() {
   if (selectedPhotos.length === 0) {
     photoArea.classList.remove('has-photos');
-    photoArea.innerHTML = '<div class="photo-placeholder"><span class="icon">📷</span>Tap to select photo</div>';
+    photoArea.innerHTML = '<div class="photo-placeholder">' +
+      '<div class="photo-icon-badge">' +
+        '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--tg-theme-button-color, #3390ec)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+          '<path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>' +
+          '<circle cx="12" cy="13" r="4"></circle>' +
+        '</svg>' +
+      '</div>' +
+      '<div class="photo-title">Attach Check Photo</div>' +
+      '<div class="photo-sub">Tap to select from gallery or camera</div>' +
+    '</div>';
     return;
   }
   photoArea.classList.add('has-photos');
@@ -584,6 +637,7 @@ function renderPhotos() {
   photoArea.innerHTML = '<div class="photo-single">' +
     '<img src="' + p.dataUrl + '">' +
     '<button class="photo-thumb-remove" id="photoRemoveBtn" title="Remove">✕</button>' +
+    '<div class="photo-pill">✓ Photo attached • Tap to change</div>' +
     '</div>';
 
   document.getElementById('photoRemoveBtn').addEventListener('click', function(ev) {
