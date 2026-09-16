@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
-<!-- Не храни здесь реальный URL репозитория: только BotFather (?api=...) или локальный webapp-config.json (не в git). -->
+<!-- РќРµ С…СЂР°РЅРё Р·РґРµСЃСЊ СЂРµР°Р»СЊРЅС‹Р№ URL СЂРµРїРѕР·РёС‚РѕСЂРёСЏ: С‚РѕР»СЊРєРѕ BotFather (?api=...) РёР»Рё Р»РѕРєР°Р»СЊРЅС‹Р№ webapp-config.json (РЅРµ РІ git). -->
 <meta name="deposit-api-base" content="">
 <title>Deposit [VER: 2.0]</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
@@ -85,35 +85,17 @@ h1 { font-size: 20px; font-weight: 600; margin-bottom: 16px; text-align: center;
 .photo-placeholder { color: var(--tg-theme-hint-color, #999); font-size: 14px; }
 .photo-placeholder .icon { font-size: 32px; display: block; margin-bottom: 8px; }
 
-.photo-grid {
-  display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;
-}
-.photo-thumb {
+.photo-single {
   position: relative; border-radius: 8px; overflow: hidden;
-  aspect-ratio: 1; background: #000;
-}
-.photo-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.photo-thumb-remove {
-  position: absolute; top: 3px; right: 3px; width: 22px; height: 22px;
-  background: rgba(0,0,0,0.7); color: #fff; border: none; border-radius: 50%;
-  font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center;
-}
-.photo-thumb-num {
-  position: absolute; bottom: 3px; left: 3px;
-  background: rgba(0,0,0,0.7); color: #fff; border-radius: 4px;
-  padding: 1px 3px; font-size: 10px; font-weight: 600;
-}
-.photo-add-more {
-  border-radius: 8px; aspect-ratio: 1;
-  border: 2px dashed var(--tg-theme-hint-color, #555);
+  max-height: 240px; background: #000;
   display: flex; align-items: center; justify-content: center;
-  color: var(--tg-theme-hint-color, #999); font-size: 28px;
-  cursor: pointer; transition: border-color 0.15s;
 }
-.photo-add-more:active { border-color: var(--tg-theme-button-color, #3390ec); }
-.photo-count {
-  margin-top: 6px; text-align: center; font-size: 12px;
-  color: var(--tg-theme-hint-color, #999);
+.photo-single img { width: 100%; max-height: 240px; object-fit: contain; display: block; }
+.photo-thumb-remove {
+  position: absolute; top: 6px; right: 6px; width: 26px; height: 26px;
+  background: rgba(0,0,0,0.75); color: #fff; border: none; border-radius: 50%;
+  font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  z-index: 2;
 }
 
 .submit-btn {
@@ -168,7 +150,7 @@ h1 { font-size: 20px; font-weight: 600; margin-bottom: 16px; text-align: center;
 </head>
 <body>
 
-<h1>📤 Deposit</h1>
+<h1>рџ“¤ Deposit</h1>
 
 <div id="content">
   <div class="section-label">Select account</div>
@@ -181,23 +163,23 @@ h1 { font-size: 20px; font-weight: 600; margin-bottom: 16px; text-align: center;
   </div>
   <div class="hint">Numbers, k (thousands), m (millions)</div>
 
-  <div class="section-label" id="photoLabel" style="margin-top:24px">Check photos</div>
+  <div class="section-label" id="photoLabel" style="margin-top:24px">Check photo</div>
   <div class="photo-area" id="photoArea">
     <div class="photo-placeholder">
-      <span class="icon">📷</span>
-      Tap to select photos
+      <span class="icon">рџ“·</span>
+      Tap to select photo
     </div>
   </div>
-  <input type="file" id="photoInput" accept="image/*" multiple style="display:none">
+  <input type="file" id="photoInput" accept="image/*" style="display:none">
 
   <div class="error-msg" id="errorMsg"></div>
-  <button class="submit-btn" id="submitBtn">📤 SUBMIT DEPOSIT</button>
+  <button class="submit-btn" id="submitBtn">рџ“¤ SUBMIT DEPOSIT</button>
 </div>
 
 <div class="empty-state" id="emptyState" style="display:none">No active accounts available</div>
 
 <div class="viewer-wrap" id="viewerWrap">
-  <div class="viewer-title">📋 Check Photos</div>
+  <div class="viewer-title">рџ“‹ Check Photos</div>
   <div class="viewer-counter" id="viewerCounter"></div>
   <div class="viewer-gallery" id="viewerGallery">
     <div class="viewer-loading" id="viewerLoading">Loading photos...</div>
@@ -225,7 +207,7 @@ tg.expand();
   document.getElementById('emptyState').style.display = 'none';
   var wrap = document.getElementById('viewerWrap');
   wrap.classList.add('active');
-  document.querySelector('h1').textContent = '📋 Check';
+  document.querySelector('h1').textContent = 'рџ“‹ Check';
 
   var fileIds = fileIdsRaw.split(',').filter(Boolean);
   var counter = document.getElementById('viewerCounter');
@@ -307,10 +289,10 @@ function normalizeAccountStatus(st) {
 
 function statusIconForAccount(acc) {
   var st = normalizeAccountStatus(acc && acc.status);
-  if (st === 'Active') return '✅';
-  // Pending: явный красный маркер + "!" (Inactive оставляем как было: ❌)
-  if (st === 'Pending') return '🔴!';
-  return '❌';
+  if (st === 'Active') return 'вњ…';
+  // Pending: СЏРІРЅС‹Р№ РєСЂР°СЃРЅС‹Р№ РјР°СЂРєРµСЂ + "!" (Inactive РѕСЃС‚Р°РІР»СЏРµРј РєР°Рє Р±С‹Р»Рѕ: вќЊ)
+  if (st === 'Pending') return 'рџ”ґ!';
+  return 'вќЊ';
 }
 
 function tryApiFromFullHref() {
@@ -325,7 +307,7 @@ function tryApiFromFullHref() {
   }
 }
 
-/** start_param иногда доступен только после ready(); b:/a: из кнопки DEPOSIT ?startapp=… */
+/** start_param РёРЅРѕРіРґР° РґРѕСЃС‚СѓРїРµРЅ С‚РѕР»СЊРєРѕ РїРѕСЃР»Рµ ready(); b:/a: РёР· РєРЅРѕРїРєРё DEPOSIT ?startapp=вЂ¦ */
 function mergeTelegramStartParam() {
   if (!tg.initDataUnsafe || !tg.initDataUnsafe.start_param) return;
   try {
@@ -390,11 +372,11 @@ function renderAccountUI() {
     if (accountsLoadError) {
       emptyEl.textContent = accountsLoadError;
     } else if (!apiBase()) {
-      emptyEl.textContent = 'Нет адреса API: в BotFather укажи URL с ?api=HTTPS_твой_сервер или заполни в index.html <meta name="deposit-api-base" content="...">';
+      emptyEl.textContent = 'РќРµС‚ Р°РґСЂРµСЃР° API: РІ BotFather СѓРєР°Р¶Рё URL СЃ ?api=HTTPS_С‚РІРѕР№_СЃРµСЂРІРµСЂ РёР»Рё Р·Р°РїРѕР»РЅРё РІ index.html <meta name="deposit-api-base" content="...">';
     } else if (!tg.initData) {
-      emptyEl.textContent = 'Открой мини-апп только из Telegram (кнопка DEPOSIT). В обычном браузере список счетов недоступен.';
+      emptyEl.textContent = 'РћС‚РєСЂРѕР№ РјРёРЅРё-Р°РїРї С‚РѕР»СЊРєРѕ РёР· Telegram (РєРЅРѕРїРєР° DEPOSIT). Р’ РѕР±С‹С‡РЅРѕРј Р±СЂР°СѓР·РµСЂРµ СЃРїРёСЃРѕРє СЃС‡РµС‚РѕРІ РЅРµРґРѕСЃС‚СѓРїРµРЅ.';
     } else {
-      emptyEl.textContent = 'Нет счетов для отображения (или бот на сервере API заблокирован).';
+      emptyEl.textContent = 'No accounts found';
     }
     return;
   }
@@ -414,8 +396,8 @@ function renderAccountUI() {
     var accs = grouped[tNum];
     var header = document.createElement('div');
     header.className = 'trader-header';
-    header.textContent = '👨‍💻 Trader #' + tNum + ' (' + accs.length + ')';
-    if (tNum == 0) header.textContent = '📋 Unassigned (' + accs.length + ')';
+    header.textContent = 'рџ‘ЁвЂЌрџ’» Trader #' + tNum + ' (' + accs.length + ')';
+    if (tNum == 0) header.textContent = 'рџ“‹ Unassigned (' + accs.length + ')';
     group.appendChild(header);
     var table = document.createElement('table');
     table.className = 'acc-table';
@@ -425,7 +407,7 @@ function renderAccountUI() {
       var row = document.createElement('tr');
       row.dataset.id = acc.id;
       var st = normalizeAccountStatus(acc && acc.status);
-      var limitText = acc.limit ? (acc.limit >= 1000 ? Math.round(acc.limit/1000) + 'k' : acc.limit) : '—';
+      var limitText = acc.limit ? (acc.limit >= 1000 ? Math.round(acc.limit/1000) + 'k' : acc.limit) : 'вЂ”';
       var statusIcon = statusIconForAccount(acc);
       row.innerHTML =
         '<td class="td-name">' + escapeHtml(acc.name) + '</td>' +
@@ -436,9 +418,9 @@ function renderAccountUI() {
           listEl.querySelectorAll('tr').forEach(function(r) { r.classList.remove('selected'); });
           selectedAccId = null;
           if (st === 'Pending') {
-            errorEl.textContent = 'Этот счёт Pending — депозит сюда сейчас нельзя (нужен Active).';
+            errorEl.textContent = 'Р­С‚РѕС‚ СЃС‡С‘С‚ Pending вЂ” РґРµРїРѕР·РёС‚ СЃСЋРґР° СЃРµР№С‡Р°СЃ РЅРµР»СЊР·СЏ (РЅСѓР¶РµРЅ Active).';
           } else {
-            errorEl.textContent = 'Этот счёт Not Active — депозит сюда нельзя.';
+            errorEl.textContent = 'Р­С‚РѕС‚ СЃС‡С‘С‚ Not Active вЂ” РґРµРїРѕР·РёС‚ СЃСЋРґР° РЅРµР»СЊР·СЏ.';
           }
           errorEl.style.display = 'block';
           updateButton();
@@ -498,7 +480,7 @@ async function loadAccountsFromApi() {
     var text = await resp.text();
     var result = {};
     try { result = JSON.parse(text); } catch (parseErr) {
-      accountsLoadError = 'Сервер API вернул не JSON (проверь ngrok / URL).';
+      accountsLoadError = 'РЎРµСЂРІРµСЂ API РІРµСЂРЅСѓР» РЅРµ JSON (РїСЂРѕРІРµСЂСЊ ngrok / URL).';
       console.error('deposit-accounts raw', text.slice(0, 200));
       return false;
     }
@@ -509,12 +491,12 @@ async function loadAccountsFromApi() {
       return true;
     }
     accountsLoadError = result.error
-      ? ('Ошибка API: ' + result.error)
-      : ('Ошибка загрузки счетов, HTTP ' + resp.status);
+      ? ('РћС€РёР±РєР° API: ' + result.error)
+      : ('РћС€РёР±РєР° Р·Р°РіСЂСѓР·РєРё СЃС‡РµС‚РѕРІ, HTTP ' + resp.status);
     return false;
   } catch (e) {
     console.error('deposit-accounts', e);
-    accountsLoadError = 'Сеть: не удалось связаться с API (ngrok выключен или неверный URL).';
+    accountsLoadError = 'РЎРµС‚СЊ: РЅРµ СѓРґР°Р»РѕСЃСЊ СЃРІСЏР·Р°С‚СЊСЃСЏ СЃ API (ngrok РІС‹РєР»СЋС‡РµРЅ РёР»Рё РЅРµРІРµСЂРЅС‹Р№ URL).';
     return false;
   }
 }
@@ -528,10 +510,10 @@ async function bootstrapDepositUi() {
   await waitInitData(2500);
   tryApiFromFullHref();
   mergeTelegramStartParam();
-  // Если есть адрес API, всегда пробуем загрузить актуальный (отфильтрованный сервером) список,
-  // даже если в ссылке (start_param) уже были какие-то счета. Это исключает утечку данных.
+  // Р•СЃР»Рё РµСЃС‚СЊ Р°РґСЂРµСЃ API, РІСЃРµРіРґР° РїСЂРѕР±СѓРµРј Р·Р°РіСЂСѓР·РёС‚СЊ Р°РєС‚СѓР°Р»СЊРЅС‹Р№ (РѕС‚С„РёР»СЊС‚СЂРѕРІР°РЅРЅС‹Р№ СЃРµСЂРІРµСЂРѕРј) СЃРїРёСЃРѕРє,
+  // РґР°Р¶Рµ РµСЃР»Рё РІ СЃСЃС‹Р»РєРµ (start_param) СѓР¶Рµ Р±С‹Р»Рё РєР°РєРёРµ-С‚Рѕ СЃС‡РµС‚Р°. Р­С‚Рѕ РёСЃРєР»СЋС‡Р°РµС‚ СѓС‚РµС‡РєСѓ РґР°РЅРЅС‹С….
   if (apiBase()) {
-    emptyEl.textContent = 'Загрузка счетов…';
+    emptyEl.textContent = 'Р—Р°РіСЂСѓР·РєР° СЃС‡РµС‚РѕРІвЂ¦';
     emptyEl.style.display = 'block';
     contentEl.style.display = 'none';
     if (tg.initData) await loadAccountsFromApi();
@@ -542,7 +524,7 @@ async function bootstrapDepositUi() {
 
 photoArea.addEventListener('click', function() { photoInput.click(); });
 
-/** Копия Blob, не привязанная к input — в Telegram WebView после input.value='' File часто становится пустым. */
+/** РљРѕРїРёСЏ Blob, РЅРµ РїСЂРёРІСЏР·Р°РЅРЅР°СЏ Рє input вЂ” РІ Telegram WebView РїРѕСЃР»Рµ input.value='' File С‡Р°СЃС‚Рѕ СЃС‚Р°РЅРѕРІРёС‚СЃСЏ РїСѓСЃС‚С‹Рј. */
 function stabilizeFile(file) {
   try {
     if (!file || !file.size) return file;
@@ -572,68 +554,44 @@ function fileFromDataUrl(dataUrl, name) {
 photoInput.addEventListener('change', function() {
   var files = Array.from(photoInput.files);
   if (!files.length) return;
-  var total = files.length;
-  var done = 0;
-  function finishOne() {
-    done++;
-    if (done === total) {
-      photoInput.value = '';
-      renderPhotos();
-      updateButton();
-    }
+  var file = files[0];
+  var stable = stabilizeFile(file);
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    selectedPhotos = [{ file: stable, dataUrl: e.target.result }];
+    photoInput.value = '';
+    renderPhotos();
+    updateButton();
+  };
+  reader.onerror = function() {
+    photoInput.value = '';
+  };
+  try {
+    reader.readAsDataURL(stable);
+  } catch (e) {
+    photoInput.value = '';
   }
-  files.forEach(function(file) {
-    var stable = stabilizeFile(file);
-    var reader = new FileReader();
-    reader.onload = function(e) {
-      selectedPhotos.push({ file: stable, dataUrl: e.target.result });
-      finishOne();
-    };
-    reader.onerror = function() {
-      finishOne();
-    };
-    try {
-      reader.readAsDataURL(stable);
-    } catch (e) {
-      finishOne();
-    }
-  });
 });
 
 function renderPhotos() {
   if (selectedPhotos.length === 0) {
     photoArea.classList.remove('has-photos');
-    photoArea.innerHTML = '<div class="photo-placeholder"><span class="icon">📷</span>Tap to select photos</div>';
+    photoArea.innerHTML = '<div class="photo-placeholder"><span class="icon">рџ“·</span>Tap to select photo</div>';
     return;
   }
   photoArea.classList.add('has-photos');
-  var html = '<div class="photo-grid">';
-  selectedPhotos.forEach(function(p, idx) {
-    html += '<div class="photo-thumb">' +
-      '<img src="' + p.dataUrl + '">' +
-      '<button class="photo-thumb-remove" data-idx="' + idx + '">✕</button>' +
-      (selectedPhotos.length > 1 ? '<span class="photo-thumb-num">' + (idx + 1) + '</span>' : '') +
-      '</div>';
-  });
-  html += '<div class="photo-add-more" id="addMoreBtn">+</div>';
-  html += '</div>';
-  if (selectedPhotos.length > 1) {
-    html += '<div class="photo-count">' + selectedPhotos.length + ' photos selected</div>';
-  }
-  photoArea.innerHTML = html;
+  var p = selectedPhotos[0];
+  photoArea.innerHTML = '<div class="photo-single">' +
+    '<img src="' + p.dataUrl + '">' +
+    '<button class="photo-thumb-remove" id="photoRemoveBtn" title="Remove">вњ•</button>' +
+    '</div>';
 
-  document.getElementById('addMoreBtn').addEventListener('click', function(ev) {
+  document.getElementById('photoRemoveBtn').addEventListener('click', function(ev) {
     ev.stopPropagation();
-    photoInput.click();
-  });
-
-  photoArea.querySelectorAll('.photo-thumb-remove').forEach(function(btn) {
-    btn.addEventListener('click', function(ev) {
-      ev.stopPropagation();
-      selectedPhotos.splice(parseInt(this.dataset.idx), 1);
-      renderPhotos();
-      updateButton();
-    });
+    selectedPhotos = [];
+    photoInput.value = '';
+    renderPhotos();
+    updateButton();
   });
 }
 
@@ -642,13 +600,13 @@ function escapeHtml(t) { var d = document.createElement('div'); d.textContent = 
 function parseAmount(str) {
   if (!str) return null;
   str = str.trim().toLowerCase().replace(/,/g, '.');
-  var m = str.match(/^(\d+(?:\.\d+)?)\s*([kmкм]?)$/);
+  var m = str.match(/^(\d+(?:\.\d+)?)\s*([kmРєРј]?)$/);
   if (!m) return null;
   var num = parseFloat(m[1]);
   if (isNaN(num) || num <= 0) return null;
   var suffix = m[2];
-  if (suffix === 'k' || suffix === 'к') num *= 1000;
-  if (suffix === 'm' || suffix === 'м') num *= 1000000;
+  if (suffix === 'k' || suffix === 'Рє') num *= 1000;
+  if (suffix === 'm' || suffix === 'Рј') num *= 1000000;
   return Math.round(num);
 }
 
@@ -715,9 +673,9 @@ async function handleSubmit() {
   var st = normalizeAccountStatus(selAcc && selAcc.status);
   if (st !== 'Active') {
     if (st === 'Pending') {
-      errorEl.textContent = 'This account is Pending — deposits are disabled until trader activates it.';
+      errorEl.textContent = 'This account is Pending вЂ” deposits are disabled until trader activates it.';
     } else {
-      errorEl.textContent = 'This account is Not Active — deposits are disabled.';
+      errorEl.textContent = 'This account is Not Active вЂ” deposits are disabled.';
     }
     errorEl.style.display = 'block';
     return;
@@ -742,15 +700,15 @@ async function handleSubmit() {
       return null;
     }).filter(function(x) { return !!x; });
     if (!photoFiles.length) {
-      errorEl.textContent = 'Не удалось прочитать фото. Выберите чек ещё раз (в Telegram откройте мини-апп с кнопки DEPOSIT).';
+      errorEl.textContent = 'РќРµ СѓРґР°Р»РѕСЃСЊ РїСЂРѕС‡РёС‚Р°С‚СЊ С„РѕС‚Рѕ. Р’С‹Р±РµСЂРёС‚Рµ С‡РµРє РµС‰С‘ СЂР°Р· (РІ Telegram РѕС‚РєСЂРѕР№С‚Рµ РјРёРЅРё-Р°РїРї СЃ РєРЅРѕРїРєРё DEPOSIT).';
       errorEl.style.display = 'block';
       return;
     }
     submitBtnEl.disabled = true;
-    showStatus('Отправка… (при нескольких чеках подождите очередь)');
+    showStatus('РћС‚РїСЂР°РІРєР°вЂ¦');
     try {
       var fd = new FormData();
-      photoFiles.forEach(function(f) { fd.append('photo', f); });
+      fd.append('photo', photoFiles[0]);
       fd.append('account_id', selectedAccId);
       fd.append('amount', String(amount));
       fd.append('amount_display', amountRaw);
@@ -760,10 +718,10 @@ async function handleSubmit() {
       var result = {};
       try { result = await resp.json(); } catch (je) { result = {}; }
       if (result.ok) {
-        showStatus('Deposit sent!', '✅');
+        showStatus('Deposit sent!', 'вњ…');
         setTimeout(function() { try { tg.close(); } catch(e) {} }, 1500);
       } else {
-        showStatus('Error: ' + (result.error || 'Unknown'), '❌');
+        showStatus('Error: ' + (result.error || 'Unknown'), 'вќЊ');
         setTimeout(function() {
           overlay.classList.remove('visible');
           document.getElementById('statusSpinner').style.display = 'block';
@@ -772,7 +730,7 @@ async function handleSubmit() {
         }, 2500);
       }
     } catch(e) {
-      showStatus('Network error', '❌');
+      showStatus('Network error', 'вќЊ');
       setTimeout(function() {
         overlay.classList.remove('visible');
         document.getElementById('statusSpinner').style.display = 'block';
